@@ -10,7 +10,7 @@ postgres:
   username: "postgres"
   password: "postgres"
   dbname: "myapp"
-  sslmode: "disable"
+  slide: "disable"
 
 jwt:
   accessSecret: "superSecret"
