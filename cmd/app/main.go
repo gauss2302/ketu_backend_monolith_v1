@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"github.com/jmoiron/sqlx"
 	config "ketu_backend_monolith_v1/configs"
 	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/handler/http"
@@ -26,12 +25,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer func(db *sqlx.DB) {
-		err := database.Close(db)
-		if err != nil {
-			log.Fatalf("Failed to close database: %v", err)
-		}
-	}(db)
+	defer db.Close() // Change this line
 
 	// Initialize repositories
 	userRepo := postgres.NewUserRepository(db)

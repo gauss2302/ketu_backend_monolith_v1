@@ -5,6 +5,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	config "ketu_backend_monolith_v1/configs"
+	"log"
 	"time"
 )
 
@@ -26,9 +27,20 @@ func NewPostgresDB(cfg *config.PostgresConfig) (*sqlx.DB, error) {
 		cfg.SSLMode,
 	)
 
-	db, err := sqlx.Connect("postgres", dsn)
+	// Add retry logic
+	var db *sqlx.DB
+	var err error
+	maxRetries := 5
+	for i := 0; i < maxRetries; i++ {
+		db, err = sqlx.Connect("postgres", dsn)
+		if err == nil {
+			break
+		}
+		log.Printf("Failed to connect to database, attempt %d/%d: %v", i+1, maxRetries, err)
+		time.Sleep(time.Second * 5)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to postgres: %v", err)
+		return nil, fmt.Errorf("error connecting to postgres after %d attempts: %v", maxRetries, err)
 	}
 
 	// Set connection pool settings
@@ -37,13 +49,5 @@ func NewPostgresDB(cfg *config.PostgresConfig) (*sqlx.DB, error) {
 	db.SetMaxIdleConns(maxIdleConns)
 	db.SetConnMaxIdleTime(time.Second * connMaxIdleTime)
 
-	if err := db.Ping(); err != nil {
-		return nil, fmt.Errorf("error pinging database: %v", err)
-	}
-
 	return db, nil
-}
-
-func Close(db *sqlx.DB) error {
-	return db.Close()
 }

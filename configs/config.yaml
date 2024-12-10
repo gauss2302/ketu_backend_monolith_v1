@@ -1,22 +1,17 @@
-server:
-  port: "8080"
-  host: "localhost"
-  readTimeout: "10s"
-  writeTimeout: "10s"
-
 postgres:
-  host: "localhost"
-  port: "5432"
+  host: "postgres"  # Change this from "localhost" to "postgres"
+  port: "5430"
   username: "postgres"
   password: "postgres"
   dbname: "myapp"
-  slide: "disable"
+  sslmode: "disable"
+
+server:
+  port: "8090"
+  host: "0.0.0.0"  # Change this to allow external connections
 
 jwt:
-  accessSecret: "superSecret"
-  refreshSecret: "refreshSecret"
+  accessSecret: "your-access-secret"
+  refreshSecret: "your-refresh-secret"
   accessTTL: "15m"
   refreshTTL: "720h"
-
-logger:
-  level: "debug"
