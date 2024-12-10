@@ -19,14 +19,9 @@ func NewUserHandler(userService *service.UserUseCase) *UserHandler {
 }
 
 func (h *UserHandler) Create(c *fiber.Ctx) error {
-	var input dto.CreateUserInput
-	if err := c.BodyParser(&input); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request payload",
-		})
-	}
+	input := c.Locals("validated").(*dto.CreateUserInput)
 
-	user, err := h.userService.CreateUser(c.Context(), input)
+	user, err := h.userService.CreateUser(c.Context(), *input)
 	if err != nil {
 		if err == domain.ErrEmailExists {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
