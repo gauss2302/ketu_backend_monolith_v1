@@ -65,3 +65,7 @@ func (uc *UserUseCase) UpdateUser(ctx context.Context, id uint, input dto.Update
 func (uc *UserUseCase) DeleteUser(ctx context.Context, id uint) error {
 	return uc.userRepo.Delete(ctx, id)
 }
+
+func (uc *UserUseCase) GetAll(ctx context.Context) ([]domain.User, error) {
+	return uc.userRepo.GetAll(ctx)
+}
