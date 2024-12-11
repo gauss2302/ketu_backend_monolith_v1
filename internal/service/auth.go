@@ -2,10 +2,12 @@ package service
 
 import (
 	"context"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
-	"ketu_backend_monolith_v1/internal/config"
+
+	configs "ketu_backend_monolith_v1/internal/config"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/repository"
@@ -14,10 +16,10 @@ import (
 
 type AuthService struct {
 	userRepo repository.UserRepository
-	cfg      *config.JWTConfig
+	cfg      *configs.JWTConfig
 }
 
-func NewAuthService(userRepo repository.UserRepository, cfg *config.JWTConfig) *AuthService {
+func NewAuthService(userRepo repository.UserRepository, cfg *configs.JWTConfig) *AuthService {
 	return &AuthService{
 		userRepo: userRepo,
 		cfg:      cfg,

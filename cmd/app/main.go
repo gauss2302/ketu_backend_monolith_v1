@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/gofiber/fiber/v2"
-	"github.com/jmoiron/sqlx"
 	configs "ketu_backend_monolith_v1/internal/config"
 	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/handler/http"
@@ -12,6 +10,9 @@ import (
 	"ketu_backend_monolith_v1/internal/repository/postgres"
 	"ketu_backend_monolith_v1/internal/service"
 	"log"
+
+	"github.com/gofiber/fiber/v2"
+	"github.com/jmoiron/sqlx"
 )
 
 func main() {
@@ -19,11 +20,27 @@ func main() {
 	cfg, db := initializeApp()
 	defer db.Close()
 
+	// Add debug logging
+	log.Printf("App initialized with config: %+v", cfg)
+
 	// Setup dependencies
 	handlers, middleware := setupDependencies(cfg, db)
+	log.Printf("Dependencies setup complete")
 
 	// Setup Fiber app and routes
 	app := setupRouter(handlers, middleware)
+	log.Printf("Router setup complete")
+
+	// Add a very basic route directly in main to test
+	app.Get("/ping", func(c *fiber.Ctx) error {
+		return c.SendString("pong")
+	})
+
+	// Print all routes before starting
+	log.Printf("Registered routes:")
+	for _, route := range app.GetRoutes() {
+		log.Printf("%s %s", route.Method, route.Path)
+	}
 
 	// Start server
 	startServer(app, cfg)
@@ -55,22 +72,23 @@ type middlewares struct {
 }
 
 func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middlewares) {
-	// Initialize repositories
+	// Add this logging
+	log.Printf("Setting up dependencies...")
+
 	userRepo := postgres.NewUserRepository(db)
+	log.Printf("UserRepo created: %v", userRepo != nil)
 
-	// Initialize services
 	userService := service.NewUserUsecase(userRepo)
+	log.Printf("UserService created: %v", userService != nil)
+
 	authService := service.NewAuthService(userRepo, &cfg.JWT)
-	log.Printf("Auth service initialized: %v", authService != nil)
+	log.Printf("AuthService created: %v", authService != nil)
 
-	// Print for debugging
-	log.Printf("AuthService initialized: %v", authService != nil)
-
-	// Initialize handlers
 	handlers := &handlers{
 		user: http.NewUserHandler(userService),
 		auth: http.NewAuthHandler(authService),
 	}
+	log.Printf("Handlers created - auth handler: %v", handlers.auth != nil)
 
 	// Print for debugging
 	log.Printf("AuthHandler initialized: %v", handlers.auth != nil)
@@ -87,6 +105,9 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
 	})
+
+	log.Printf("Setting up routes with handlers: %+v", h)
+	log.Printf("Auth handler nil check: %v", h.auth != nil)
 
 	// Add simple middleware to log all requests
 	app.Use(func(c *fiber.Ctx) error {
@@ -121,6 +142,10 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 	for _, route := range app.GetRoutes() {
 		log.Printf("Route registered: %s %s", route.Method, route.Path)
 	}
+
+	app.Get("/test", func(c *fiber.Ctx) error {
+		return c.SendString("Test route works!")
+	})
 
 	return app
 }

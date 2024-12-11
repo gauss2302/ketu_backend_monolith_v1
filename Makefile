@@ -13,3 +13,6 @@ docker-up:
 
 docker-down:
 	docker-compose down
+
+r:
+	docker compose down && docker-compose up -d

@@ -4,15 +4,15 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	"ketu_backend_monolith_v1/internal/config"
+	configs "ketu_backend_monolith_v1/internal/config"
 	"strings"
 )
 
 type AuthMiddleware struct {
-	config config.JWTConfig
+	config configs.JWTConfig
 }
 
-func NewAuthMiddleware(config config.JWTConfig) *AuthMiddleware {
+func NewAuthMiddleware(config configs.JWTConfig) *AuthMiddleware {
 	return &AuthMiddleware{
 		config: config,
 	}
