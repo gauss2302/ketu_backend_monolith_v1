@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/jmoiron/sqlx"
-	"ketu_backend_monolith_v1/internal/config"
+	configs "ketu_backend_monolith_v1/internal/config"
 	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/handler/http"
 	"ketu_backend_monolith_v1/internal/handler/middleware"
@@ -29,9 +29,9 @@ func main() {
 	startServer(app, cfg)
 }
 
-func initializeApp() (*config.Config, *sqlx.DB) {
+func initializeApp() (*configs.Config, *sqlx.DB) {
 	// Load configuration
-	cfg, err := config.LoadConfig("configs")
+	cfg, err := configs.LoadConfig("configs")
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
@@ -54,7 +54,7 @@ type middlewares struct {
 	auth *middleware.AuthMiddleware
 }
 
-func setupDependencies(cfg *config.Config, db *sqlx.DB) (*handlers, *middlewares) {
+func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middlewares) {
 	// Initialize repositories
 	userRepo := postgres.NewUserRepository(db)
 
@@ -125,7 +125,7 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 	return app
 }
 
-func startServer(app *fiber.App, cfg *config.Config) {
+func startServer(app *fiber.App, cfg *configs.Config) {
 	serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
 	log.Printf("Server starting on %s", serverAddr)
 	log.Fatal(app.Listen(serverAddr))

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
-	config "ketu_backend_monolith_v1/configs"
+	configs "ketu_backend_monolith_v1/internal/config"
 	"log"
 	"time"
 )
@@ -16,7 +16,7 @@ const (
 	connMaxIdleTime = 10 // minutes
 )
 
-func NewPostgresDB(cfg *config.PostgresConfig) (*sqlx.DB, error) {
+func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 	dsn := fmt.Sprintf(
 		"host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
 		cfg.Host,
