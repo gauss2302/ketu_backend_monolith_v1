@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	config "ketu_backend_monolith_v1/configs"
+	"github.com/jmoiron/sqlx"
+	"ketu_backend_monolith_v1/internal/config"
 	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/handler/http"
 	"ketu_backend_monolith_v1/internal/handler/middleware"
@@ -14,6 +15,21 @@ import (
 )
 
 func main() {
+	// Initialize app
+	cfg, db := initializeApp()
+	defer db.Close()
+
+	// Setup dependencies
+	handlers, middleware := setupDependencies(cfg, db)
+
+	// Setup Fiber app and routes
+	app := setupRouter(handlers, middleware)
+
+	// Start server
+	startServer(app, cfg)
+}
+
+func initializeApp() (*config.Config, *sqlx.DB) {
 	// Load configuration
 	cfg, err := config.LoadConfig("configs")
 	if err != nil {
@@ -25,38 +41,92 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
-	defer db.Close() // Change this line
 
+	return cfg, db
+}
+
+type handlers struct {
+	user *http.UserHandler
+	auth *http.AuthHandler
+}
+
+type middlewares struct {
+	auth *middleware.AuthMiddleware
+}
+
+func setupDependencies(cfg *config.Config, db *sqlx.DB) (*handlers, *middlewares) {
 	// Initialize repositories
 	userRepo := postgres.NewUserRepository(db)
 
-	// Initialize usecases
-	userUseCase := service.NewUserUsecase(userRepo)
+	// Initialize services
+	userService := service.NewUserUsecase(userRepo)
+	authService := service.NewAuthService(userRepo, &cfg.JWT)
+	log.Printf("Auth service initialized: %v", authService != nil)
+
+	// Print for debugging
+	log.Printf("AuthService initialized: %v", authService != nil)
 
 	// Initialize handlers
-	userHandler := http.NewUserHandler(userUseCase)
+	handlers := &handlers{
+		user: http.NewUserHandler(userService),
+		auth: http.NewAuthHandler(authService),
+	}
 
-	// Setup Fiber app
-	app := fiber.New()
+	// Print for debugging
+	log.Printf("AuthHandler initialized: %v", handlers.auth != nil)
 
-	authMiddleware := middleware.NewAuthMiddleware(cfg.JWT)
+	// Initialize middleware
+	middlewares := &middlewares{
+		auth: middleware.NewAuthMiddleware(cfg.JWT),
+	}
+
+	return handlers, middlewares
+}
+
+func setupRouter(h *handlers, m *middlewares) *fiber.App {
+	app := fiber.New(fiber.Config{
+		EnablePrintRoutes: true,
+	})
+
+	// Add simple middleware to log all requests
+	app.Use(func(c *fiber.Ctx) error {
+		log.Printf("Incoming request: %s %s", c.Method(), c.Path())
+		return c.Next()
+	})
 
 	// Setup routes
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 
-	//Public routes
+	// IMPORTANT: Register auth routes BEFORE user routes
+	// Auth routes (public)
+	auth := v1.Group("/auth")
+	auth.Post("/register", middleware.ValidateBody(&dto.RegisterRequest{}), h.auth.Register)
+	auth.Post("/login", middleware.ValidateBody(&dto.LoginRequest{}), h.auth.Login)
+
+	// User routes
 	users := v1.Group("/users")
-	users.Post("/", middleware.ValidateBody(&dto.CreateUserInput{}), userHandler.Create)
 
-	// Protected routes
-	users.Use(authMiddleware.AuthRequired())
-	users.Get("/", userHandler.GetAll)
-	users.Get("/:id", userHandler.GetByID)
-	users.Put("/:id", middleware.ValidateBody(&dto.UpdateUserInput{}), userHandler.Update)
-	users.Delete("/:id", userHandler.Delete)
+	// Public user routes
+	users.Post("/", middleware.ValidateBody(&dto.CreateUserInput{}), h.user.Create)
 
-	// Start server
+	// Protected user routes
+	users.Use(m.auth.AuthRequired())
+	users.Get("/", h.user.GetAll)
+	users.Get("/:id", h.user.GetByID)
+	users.Put("/:id", middleware.ValidateBody(&dto.UpdateUserInput{}), h.user.Update)
+	users.Delete("/:id", h.user.Delete)
+
+	// Print all registered routes for debugging
+	for _, route := range app.GetRoutes() {
+		log.Printf("Route registered: %s %s", route.Method, route.Path)
+	}
+
+	return app
+}
+
+func startServer(app *fiber.App, cfg *config.Config) {
 	serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+	log.Printf("Server starting on %s", serverAddr)
 	log.Fatal(app.Listen(serverAddr))
 }

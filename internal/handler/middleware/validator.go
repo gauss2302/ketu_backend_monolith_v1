@@ -3,13 +3,17 @@ package middleware
 import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
+	"log"
 )
 
 var validate = validator.New()
 
 func ValidateBody(payload interface{}) fiber.Handler {
 	return func(c *fiber.Ctx) error {
+		log.Printf("Validating request body for path: %s", c.Path())
+
 		if err := c.BodyParser(payload); err != nil {
+			log.Printf("Body parsing error: %v", err)
 			return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 				"error": "Invalid request payload",
 			})

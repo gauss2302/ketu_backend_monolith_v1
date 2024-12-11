@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v4"
-	config "ketu_backend_monolith_v1/configs"
+	"ketu_backend_monolith_v1/internal/config"
 	"strings"
 )
 
