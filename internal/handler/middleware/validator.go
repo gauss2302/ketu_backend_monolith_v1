@@ -20,7 +20,7 @@ func ValidateBody(payload interface{}) fiber.Handler {
 		}
 
 		if err := validate.Struct(payload); err != nil {
-			errors := []map[string]string{}
+			var errors []map[string]string
 			for _, err := range err.(validator.ValidationErrors) {
 				errors = append(errors, map[string]string{
 					"field": err.Field(),

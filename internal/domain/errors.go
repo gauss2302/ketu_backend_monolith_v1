@@ -6,4 +6,5 @@ var (
 	ErrUserNotFound       = errors.New("user not found")
 	ErrEmailExists        = errors.New("email already exists")
 	ErrInvalidCredentials = errors.New("invalid credentials")
+	ErrPlaceNotFound      = errors.New("place not found")
 )
