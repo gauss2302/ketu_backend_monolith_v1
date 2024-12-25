@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"github.com/gofiber/fiber/v2"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/handler/dto"
@@ -27,7 +28,7 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 
 	user, err := h.authService.Register(c.Context(), input)
 	if err != nil {
-		if err == domain.ErrEmailExists {
+		if errors.Is(err, domain.ErrEmailExists) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": "Email already exists",
 			})
