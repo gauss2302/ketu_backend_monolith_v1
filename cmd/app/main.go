@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 	configs "ketu_backend_monolith_v1/internal/config"
-	"ketu_backend_monolith_v1/internal/handler/dto"
+
 	"ketu_backend_monolith_v1/internal/handler/http"
 	"ketu_backend_monolith_v1/internal/handler/middleware"
 	"ketu_backend_monolith_v1/internal/pkg/database"
 	"ketu_backend_monolith_v1/internal/repository/postgres"
+
+	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/service"
 	"log"
 
@@ -63,8 +65,9 @@ func initializeApp() (*configs.Config, *sqlx.DB) {
 }
 
 type handlers struct {
-	user *http.UserHandler
-	auth *http.AuthHandler
+	user  *http.UserHandler
+	auth  *http.AuthHandler
+	place *http.PlaceHandler
 }
 
 type middlewares struct {
@@ -72,28 +75,28 @@ type middlewares struct {
 }
 
 func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middlewares) {
-	// Add this logging
 	log.Printf("Setting up dependencies...")
 
+	// Repositories
 	userRepo := postgres.NewUserRepository(db)
-	log.Printf("UserRepo created: %v", userRepo != nil)
+	placeRepo := postgres.NewPlaceRepository(db)
+	log.Printf("Repositories created - UserRepo: %v, PlaceRepo: %v", userRepo != nil, placeRepo != nil)
 
+	// Services
 	userService := service.NewUserUsecase(userRepo)
-	log.Printf("UserService created: %v", userService != nil)
-
 	authService := service.NewAuthService(userRepo, &cfg.JWT)
-	log.Printf("AuthService created: %v", authService != nil)
+	placeService := service.NewPlaceService(placeRepo) // PlaceRepo now implements PlaceRepository interface
+	log.Printf("Services created - UserService: %v, AuthService: %v, PlaceService: %v",
+		userService != nil, authService != nil, placeService != nil)
 
+	// Handlers
 	handlers := &handlers{
-		user: http.NewUserHandler(userService),
-		auth: http.NewAuthHandler(authService),
+		user:  http.NewUserHandler(userService),
+		auth:  http.NewAuthHandler(authService),
+		place: http.NewPlaceHandler(placeService),
 	}
-	log.Printf("Handlers created - auth handler: %v", handlers.auth != nil)
 
-	// Print for debugging
-	log.Printf("AuthHandler initialized: %v", handlers.auth != nil)
-
-	// Initialize middleware
+	// Middleware
 	middlewares := &middlewares{
 		auth: middleware.NewAuthMiddleware(cfg.JWT),
 	}
@@ -107,28 +110,24 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 	})
 
 	log.Printf("Setting up routes with handlers: %+v", h)
-	log.Printf("Auth handler nil check: %v", h.auth != nil)
 
-	// Add simple middleware to log all requests
+	// Request logging middleware
 	app.Use(func(c *fiber.Ctx) error {
 		log.Printf("Incoming request: %s %s", c.Method(), c.Path())
 		return c.Next()
 	})
 
-	// Setup routes
+	// API routes
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
 
-	// IMPORTANT: Register auth routes BEFORE user routes
-	// Auth routes (public)
+	// Auth routes
 	auth := v1.Group("/auth")
 	auth.Post("/register", middleware.ValidateBody(&dto.RegisterRequest{}), h.auth.Register)
 	auth.Post("/login", middleware.ValidateBody(&dto.LoginRequest{}), h.auth.Login)
 
 	// User routes
 	users := v1.Group("/users")
-
-	// Public user routes
 	users.Post("/", middleware.ValidateBody(&dto.CreateUserInput{}), h.user.Create)
 
 	// Protected user routes
@@ -138,14 +137,23 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 	users.Put("/:id", middleware.ValidateBody(&dto.UpdateUserInput{}), h.user.Update)
 	users.Delete("/:id", h.user.Delete)
 
+	// Place routes
+	places := v1.Group("/places")
+
+	// Public place routes
+	places.Get("/", h.place.List)         // List all places
+	places.Get("/search", h.place.Search) // Search places
+	places.Get("/:id", h.place.GetByID)   // Get place by ID
+
+	// Protected place routes
+	places.Post("/", middleware.ValidateBody(&dto.PlaceCreateDTO{}), h.place.Create)
+	places.Put("/:id", middleware.ValidateBody(&dto.PlaceUpdateDTO{}), h.place.Update)
+	places.Delete("/:id", h.place.Delete) // Delete place
+
 	// Print all registered routes for debugging
 	for _, route := range app.GetRoutes() {
 		log.Printf("Route registered: %s %s", route.Method, route.Path)
 	}
-
-	app.Get("/test", func(c *fiber.Ctx) error {
-		return c.SendString("Test route works!")
-	})
 
 	return app
 }
