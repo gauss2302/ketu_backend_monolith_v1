@@ -3,8 +3,9 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"github.com/jmoiron/sqlx"
 	"ketu_backend_monolith_v1/internal/domain"
+
+	"github.com/jmoiron/sqlx"
 )
 
 type UserRepo struct {
