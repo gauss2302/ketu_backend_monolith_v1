@@ -1,13 +1,13 @@
+// internal/handler/http/auth.go
 package http
 
 import (
 	"errors"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/dto"
+	"ketu_backend_monolith_v1/internal/service"
 
 	"github.com/gofiber/fiber/v2"
-
-	"ketu_backend_monolith_v1/internal/service"
 )
 
 type AuthHandler struct {
@@ -21,14 +21,14 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
-	var input dto.RegisterRequest
-	if err := c.BodyParser(&input); err != nil {
+	var req dto.RegisterRequestDTO
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request payload",
 		})
 	}
 
-	user, err := h.authService.Register(c.Context(), input)
+	response, err := h.authService.Register(c.Context(), &req)
 	if err != nil {
 		if errors.Is(err, domain.ErrEmailExists) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
@@ -40,24 +40,20 @@ func (h *AuthHandler) Register(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(dto.UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-	})
+	return c.Status(fiber.StatusCreated).JSON(response)
 }
 
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
-	var input dto.LoginRequest
-	if err := c.BodyParser(&input); err != nil {
+	var req dto.LoginRequestDTO
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request payload",
 		})
 	}
 
-	user, accessToken, refreshToken, err := h.authService.Login(c.Context(), input)
+	response, err := h.authService.Login(c.Context(), &req)
 	if err != nil {
-		if err == domain.ErrInvalidCredentials {
+		if errors.Is(err, domain.ErrInvalidCredentials) {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 				"error": "Invalid email or password",
 			})
@@ -67,13 +63,24 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(dto.AuthResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		User: dto.UserResponse{
-			ID:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		},
+	return c.Status(fiber.StatusOK).JSON(response)
+}
+
+// Optionally, you might want to add a refresh token endpoint:
+func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
+	// Get refresh token from Authorization header
+	refreshToken := c.Get("Authorization")
+	if refreshToken == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Refresh token is required",
+		})
+	}
+
+	// TODO: Implement refresh token logic in AuthService
+	// response, err := h.authService.RefreshToken(c.Context(), refreshToken)
+	// ...
+
+	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
+		"error": "Not implemented",
 	})
 }

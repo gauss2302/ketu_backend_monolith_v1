@@ -83,7 +83,7 @@ func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middleware
 	log.Printf("Repositories created - UserRepo: %v, PlaceRepo: %v", userRepo != nil, placeRepo != nil)
 
 	// Services
-	userService := service.NewUserUsecase(userRepo)
+	userService := service.NewUserService(userRepo)
 	authService := service.NewAuthService(userRepo, &cfg.JWT)
 	placeService := service.NewPlaceService(placeRepo) // PlaceRepo now implements PlaceRepository interface
 	log.Printf("Services created - UserService: %v, AuthService: %v, PlaceService: %v",
@@ -123,18 +123,18 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 
 	// Auth routes
 	auth := v1.Group("/auth")
-	auth.Post("/register", middleware.ValidateBody(&dto.RegisterRequest{}), h.auth.Register)
-	auth.Post("/login", middleware.ValidateBody(&dto.LoginRequest{}), h.auth.Login)
+	auth.Post("/register", middleware.ValidateBody(&dto.RegisterRequestDTO{}), h.auth.Register)
+	auth.Post("/login", middleware.ValidateBody(&dto.LoginRequestDTO{}), h.auth.Login)
 
 	// User routes
 	users := v1.Group("/users")
-	users.Post("/", middleware.ValidateBody(&dto.CreateUserInput{}), h.user.Create)
+	users.Post("/", middleware.ValidateBody(&dto.UserCreateDTO{}), h.user.Create)
 
 	// Protected user routes
 	users.Use(m.auth.AuthRequired())
 	users.Get("/", h.user.GetAll)
 	users.Get("/:id", h.user.GetByID)
-	users.Put("/:id", middleware.ValidateBody(&dto.UpdateUserInput{}), h.user.Update)
+	users.Put("/:id", middleware.ValidateBody(&dto.UserUpdateDTO{}), h.user.Update)
 	users.Delete("/:id", h.user.Delete)
 
 	// Place routes

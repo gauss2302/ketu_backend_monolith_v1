@@ -1,31 +1,37 @@
+// internal/handler/http/user.go
 package http
 
 import (
+	"errors"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/dto"
-
-	"github.com/gofiber/fiber/v2"
-
 	"ketu_backend_monolith_v1/internal/service"
 	"strconv"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type UserHandler struct {
-	userService *service.UserUseCase
+	userService *service.UserService
 }
 
-func NewUserHandler(userService *service.UserUseCase) *UserHandler {
+func NewUserHandler(userService *service.UserService) *UserHandler {
 	return &UserHandler{
 		userService: userService,
 	}
 }
 
 func (h *UserHandler) Create(c *fiber.Ctx) error {
-	input := c.Locals("validated").(*dto.CreateUserInput)
+	var req dto.UserCreateDTO
+	if err := c.BodyParser(&req); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Invalid request payload",
+		})
+	}
 
-	user, err := h.userService.CreateUser(c.Context(), *input)
+	response, err := h.userService.Create(c.Context(), &req)
 	if err != nil {
-		if err == domain.ErrEmailExists {
+		if errors.Is(err, domain.ErrEmailExists) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": "Email already exists",
 			})
@@ -35,11 +41,7 @@ func (h *UserHandler) Create(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(dto.UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-	})
+	return c.Status(fiber.StatusCreated).JSON(response)
 }
 
 func (h *UserHandler) GetByID(c *fiber.Ctx) error {
@@ -50,9 +52,9 @@ func (h *UserHandler) GetByID(c *fiber.Ctx) error {
 		})
 	}
 
-	user, err := h.userService.GetUser(c.Context(), uint(id))
+	response, err := h.userService.GetByID(c.Context(), uint(id))
 	if err != nil {
-		if err == domain.ErrUserNotFound {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "User not found",
 			})
@@ -62,31 +64,18 @@ func (h *UserHandler) GetByID(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.JSON(dto.UserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-		Email:    user.Email,
-	})
+	return c.JSON(response)
 }
 
 func (h *UserHandler) GetAll(c *fiber.Ctx) error {
-	users, err := h.userService.GetAll(c.Context())
+	responses, err := h.userService.GetAll(c.Context())
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to get users",
 		})
 	}
 
-	var response []dto.UserResponse
-	for _, user := range users {
-		response = append(response, dto.UserResponse{
-			ID:       user.ID,
-			Username: user.Username,
-			Email:    user.Email,
-		})
-	}
-
-	return c.JSON(response)
+	return c.JSON(responses)
 }
 
 func (h *UserHandler) Update(c *fiber.Ctx) error {
@@ -97,15 +86,16 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	var input dto.UpdateUserInput
-	if err := c.BodyParser(&input); err != nil {
+	var req dto.UserUpdateDTO
+	if err := c.BodyParser(&req); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": "Invalid request payload",
 		})
 	}
 
-	if err := h.userService.UpdateUser(c.Context(), uint(id), input); err != nil {
-		if err == domain.ErrUserNotFound {
+	response, err := h.userService.Update(c.Context(), uint(id), &req)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "User not found",
 			})
@@ -115,7 +105,7 @@ func (h *UserHandler) Update(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.SendStatus(fiber.StatusOK)
+	return c.JSON(response)
 }
 
 func (h *UserHandler) Delete(c *fiber.Ctx) error {
@@ -126,8 +116,8 @@ func (h *UserHandler) Delete(c *fiber.Ctx) error {
 		})
 	}
 
-	if err := h.userService.DeleteUser(c.Context(), uint(id)); err != nil {
-		if err == domain.ErrUserNotFound {
+	if err := h.userService.Delete(c.Context(), uint(id)); err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 				"error": "User not found",
 			})

@@ -1,73 +1,91 @@
+// internal/service/user.go
 package service
 
 import (
 	"context"
+	"errors"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/dto"
+	"ketu_backend_monolith_v1/internal/mapper"
 	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
-
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-type UserUseCase struct {
+type UserService struct {
 	userRepo repository.UserRepository
 }
 
-func NewUserUsecase(userRepo repository.UserRepository) *UserUseCase {
-	return &UserUseCase{
+func NewUserService(userRepo repository.UserRepository) *UserService {
+	return &UserService{
 		userRepo: userRepo,
 	}
 }
 
-func (u *UserUseCase) CreateUser(ctx context.Context, input dto.CreateUserInput) (*domain.User, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+func (s *UserService) Create(ctx context.Context, req *dto.UserCreateDTO) (*dto.UserResponseDTO, error) {
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
 	}
 
-	now := time.Now()
-	user := &domain.User{
-		Username:  input.Username,
-		Email:     input.Email,
-		Password:  string(hashedPassword),
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
+	user := mapper.ToUserDomain(req)
+	user.Password = string(hashedPassword)
 
-	if err := u.userRepo.Create(ctx, user); err != nil {
+	if err := s.userRepo.Create(ctx, user); err != nil {
+		if errors.Is(err, domain.ErrEmailExists) {
+			return nil, domain.ErrEmailExists
+		}
 		return nil, err
 	}
 
-	return user, nil
+	return mapper.ToUserResponseDTO(user), nil
 }
 
-func (uc *UserUseCase) GetUser(ctx context.Context, id uint) (*domain.User, error) {
-	return uc.userRepo.GetByID(ctx, id)
-}
-
-func (uc *UserUseCase) UpdateUser(ctx context.Context, id uint, input dto.UpdateUserInput) error {
-	user, err := uc.userRepo.GetByID(ctx, id)
+func (s *UserService) GetByID(ctx context.Context, id uint) (*dto.UserResponseDTO, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	return mapper.ToUserResponseDTO(user), nil
+}
+
+func (s *UserService) GetAll(ctx context.Context) ([]*dto.UserResponseDTO, error) {
+	users, err := s.userRepo.GetAll(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return mapper.ToUserListResponseDTO(users), nil
+}
+
+func (s *UserService) Update(ctx context.Context, id uint, req *dto.UserUpdateDTO) (*dto.UserResponseDTO, error) {
+	user, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return nil, domain.ErrUserNotFound
+		}
+		return nil, err
+	}
+
+	mapper.UpdateUserDomain(user, req)
+
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return nil, err
+	}
+
+	return mapper.ToUserResponseDTO(user), nil
+}
+
+func (s *UserService) Delete(ctx context.Context, id uint) error {
+	if err := s.userRepo.Delete(ctx, id); err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return domain.ErrUserNotFound
+		}
 		return err
 	}
-
-	if input.Username != "" {
-		user.Username = input.Username
-	}
-	if input.Email != "" {
-		user.Email = input.Email
-	}
-
-	user.UpdatedAt = time.Now()
-	return uc.userRepo.Update(ctx, user)
-}
-
-func (uc *UserUseCase) DeleteUser(ctx context.Context, id uint) error {
-	return uc.userRepo.Delete(ctx, id)
-}
-
-func (uc *UserUseCase) GetAll(ctx context.Context) ([]domain.User, error) {
-	return uc.userRepo.GetAll(ctx)
+	return nil
 }
