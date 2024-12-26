@@ -5,10 +5,9 @@ import (
 	"context"
 	"errors"
 	"ketu_backend_monolith_v1/internal/domain"
-	"ketu_backend_monolith_v1/internal/handler/dto"
-
-	"ketu_backend_monolith_v1/internal/domain/mapper"
-	"ketu_backend_monolith_v1/internal/repository"
+	"ketu_backend_monolith_v1/internal/dto"
+	"ketu_backend_monolith_v1/internal/mapper"
+	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
 )
 
 type PlaceService struct {

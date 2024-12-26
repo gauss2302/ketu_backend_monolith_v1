@@ -2,11 +2,13 @@ package service
 
 import (
 	"context"
-	"golang.org/x/crypto/bcrypt"
 	"ketu_backend_monolith_v1/internal/domain"
-	"ketu_backend_monolith_v1/internal/handler/dto"
-	"ketu_backend_monolith_v1/internal/repository"
+	"ketu_backend_monolith_v1/internal/dto"
+	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
+
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserUseCase struct {

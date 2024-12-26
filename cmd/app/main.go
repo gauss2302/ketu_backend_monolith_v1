@@ -3,13 +3,13 @@ package main
 import (
 	"fmt"
 	configs "ketu_backend_monolith_v1/internal/config"
+	"ketu_backend_monolith_v1/internal/dto"
 
 	"ketu_backend_monolith_v1/internal/handler/http"
 	"ketu_backend_monolith_v1/internal/handler/middleware"
 	"ketu_backend_monolith_v1/internal/pkg/database"
 	"ketu_backend_monolith_v1/internal/repository/postgres"
 
-	"ketu_backend_monolith_v1/internal/handler/dto"
 	"ketu_backend_monolith_v1/internal/service"
 	"log"
 

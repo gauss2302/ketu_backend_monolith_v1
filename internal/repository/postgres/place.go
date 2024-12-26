@@ -8,8 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
-	"ketu_backend_monolith_v1/internal/handler/dto"
-	"ketu_backend_monolith_v1/internal/repository"
+	"ketu_backend_monolith_v1/internal/dto"
+	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
 
 	"github.com/jmoiron/sqlx"
 )

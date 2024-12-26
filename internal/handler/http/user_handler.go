@@ -1,9 +1,11 @@
 package http
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"ketu_backend_monolith_v1/internal/domain"
-	"ketu_backend_monolith_v1/internal/handler/dto"
+	"ketu_backend_monolith_v1/internal/dto"
+
+	"github.com/gofiber/fiber/v2"
+
 	"ketu_backend_monolith_v1/internal/service"
 	"strconv"
 )
