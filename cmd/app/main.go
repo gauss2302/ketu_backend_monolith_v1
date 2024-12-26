@@ -4,6 +4,10 @@ import (
 	"fmt"
 	configs "ketu_backend_monolith_v1/internal/config"
 	"ketu_backend_monolith_v1/internal/dto"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"ketu_backend_monolith_v1/internal/handler/http"
 	"ketu_backend_monolith_v1/internal/handler/middleware"
@@ -14,6 +18,7 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -30,7 +35,7 @@ func main() {
 	log.Printf("Dependencies setup complete")
 
 	// Setup Fiber app and routes
-	app := setupRouter(handlers, middleware)
+	app := setupRouter(handlers, middleware, db)
 	log.Printf("Router setup complete")
 
 	// Add a very basic route directly in main to test
@@ -85,7 +90,7 @@ func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middleware
 	// Services
 	userService := service.NewUserService(userRepo)
 	authService := service.NewAuthService(userRepo, &cfg.JWT)
-	placeService := service.NewPlaceService(placeRepo) // PlaceRepo now implements PlaceRepository interface
+	placeService := service.NewPlaceService(placeRepo)
 	log.Printf("Services created - UserService: %v, AuthService: %v, PlaceService: %v",
 		userService != nil, authService != nil, placeService != nil)
 
@@ -104,17 +109,62 @@ func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middleware
 	return handlers, middlewares
 }
 
-func setupRouter(h *handlers, m *middlewares) *fiber.App {
+func setupRouter(h *handlers, m *middlewares, db *sqlx.DB) *fiber.App {
 	app := fiber.New(fiber.Config{
 		EnablePrintRoutes: true,
+		ErrorHandler: func(c *fiber.Ctx, err error) error {
+			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+				"error": err.Error(),
+			})
+		},
 	})
 
-	log.Printf("Setting up routes with handlers: %+v", h)
+	app.Use(cors.New(cors.Config{
+		AllowOrigins: "*", // Configure based on your needs
+		AllowMethods: "GET,POST,PUT,DELETE",
+		AllowHeaders: "Origin, Content-Type, Accept",
+	}))
 
 	// Request logging middleware
 	app.Use(func(c *fiber.Ctx) error {
 		log.Printf("Incoming request: %s %s", c.Method(), c.Path())
 		return c.Next()
+	})
+
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "ok",
+			"time":   time.Now(),
+		})
+	})
+
+	app.Get("/health/db", func(c *fiber.Ctx) error {
+		err := db.Ping()
+		if err != nil {
+			log.Printf("Database ping failed: %v", err)
+			return c.Status(503).JSON(fiber.Map{
+				"status": "error",
+				"error":  "Database connection failed",
+			})
+		}
+
+		// Check if users table exists
+		var exists bool
+		err = db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')").Scan(&exists)
+		if err != nil {
+			log.Printf("Table check failed: %v", err)
+			return c.Status(503).JSON(fiber.Map{
+				"status": "error",
+				"error":  "Database table check failed",
+			})
+		}
+
+		return c.JSON(fiber.Map{
+			"status": "ok",
+			"tables": map[string]bool{
+				"users": exists,
+			},
+		})
 	})
 
 	// API routes
@@ -160,6 +210,18 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 
 func startServer(app *fiber.App, cfg *configs.Config) {
 	serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-c
+		log.Println("Gracefully shutting down...")
+		_ = app.Shutdown()
+	}()
+
 	log.Printf("Server starting on %s", serverAddr)
-	log.Fatal(app.Listen(serverAddr))
+	if err := app.Listen(serverAddr); err != nil {
+		log.Fatal(err)
+	}
 }

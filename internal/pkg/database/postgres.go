@@ -2,11 +2,12 @@ package database
 
 import (
 	"fmt"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	configs "ketu_backend_monolith_v1/internal/config"
 	"log"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq"
 )
 
 const (
@@ -48,6 +49,11 @@ func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 	db.SetConnMaxLifetime(time.Minute * connMaxLifetime)
 	db.SetMaxIdleConns(maxIdleConns)
 	db.SetConnMaxIdleTime(time.Second * connMaxIdleTime)
+
+	// Run migrations
+	if err := RunMigrations(db); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %v", err)
+	}
 
 	return db, nil
 }

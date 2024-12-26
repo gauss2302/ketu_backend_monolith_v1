@@ -5,10 +5,11 @@ import (
 )
 
 type User struct {
-	ID        uint      `json:"id"`
-	Username  string    `json:"username"`
-	Email     string    `json:"email"`
-	Password  string    `json:"-"` // "-" means this won't be shown in JSON
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uint      `json:"id" db:"id"`
+	Username  string    `json:"username" db:"username"`
+	Name      string    `json:"name" db:"name"`
+	Email     string    `json:"email" db:"email"`
+	Password  string    `json:"-" db:"password"`
+	CreatedAt time.Time `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }

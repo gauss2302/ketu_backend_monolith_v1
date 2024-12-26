@@ -35,14 +35,15 @@ func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
 	}
 
 	query := `
-		 INSERT INTO users (username, email, password, created_at, updated_at)
-		 VALUES ($1, $2, $3, $4, $5)
-		 RETURNING id`
+	INSERT INTO users (username, email, password, name, created_at, updated_at)
+	VALUES ($1, $2, $3, $4, $5, $6)
+	RETURNING id`
 
 	err = r.db.QueryRowContext(ctx, query,
 		user.Username,
 		user.Email,
 		user.Password,
+		user.Name,
 		user.CreatedAt,
 		user.UpdatedAt,
 	).Scan(&user.ID)
@@ -71,17 +72,23 @@ func (r *UserRepo) GetByID(ctx context.Context, id uint) (*domain.User, error) {
 }
 
 func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	var user domain.User
-	query := `SELECT id, username, email, password, created_at, updated_at FROM users WHERE email = $1`
+	log.Printf("=== Getting user by email: %s ===", email)
 
+	var user domain.User
+	query := `SELECT id, username, email, password, name, created_at, updated_at FROM users WHERE email = $1`
+
+	log.Printf("Executing query: %s", query)
 	err := r.db.GetContext(ctx, &user, query, email)
 	if err != nil {
 		if err == sql.ErrNoRows {
+			log.Printf("No user found with email: %s", email)
 			return nil, domain.ErrUserNotFound
 		}
+		log.Printf("Error querying user: %v", err)
 		return nil, err
 	}
 
+	log.Printf("User found: %+v", user)
 	return &user, nil
 }
 

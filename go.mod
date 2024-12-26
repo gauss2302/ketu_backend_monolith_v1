@@ -6,6 +6,7 @@ require (
 	github.com/go-playground/validator/v10 v10.23.0
 	github.com/gofiber/fiber/v2 v2.52.5
 	github.com/golang-jwt/jwt/v4 v4.5.1
+	github.com/golang-migrate/migrate/v4 v4.18.1
 	github.com/jmoiron/sqlx v1.4.0
 	github.com/lib/pq v1.10.9
 	github.com/spf13/viper v1.19.0
@@ -15,7 +16,11 @@ require (
 
 require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
+	github.com/hashicorp/errwrap v1.1.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
+	go.uber.org/atomic v1.9.0 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
 require (
