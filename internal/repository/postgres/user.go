@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"ketu_backend_monolith_v1/internal/domain"
+	"log"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -19,28 +20,39 @@ func NewUserRepository(db *sqlx.DB) *UserRepo {
 }
 
 func (r *UserRepo) Create(ctx context.Context, user *domain.User) error {
-	// First check if email exists
+	// Add logging
+	log.Printf("Attempting to create user with email: %s", user.Email)
+
 	var exists bool
 	err := r.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)", user.Email).Scan(&exists)
 	if err != nil {
+		log.Printf("Error checking email existence: %v", err)
 		return err
 	}
 	if exists {
+		log.Printf("Email already exists: %s", user.Email)
 		return domain.ErrEmailExists
 	}
 
 	query := `
-        INSERT INTO users (username, email, password, created_at, updated_at)
-        VALUES ($1, $2, $3, $4, $5)
-        RETURNING id`
+		 INSERT INTO users (username, email, password, created_at, updated_at)
+		 VALUES ($1, $2, $3, $4, $5)
+		 RETURNING id`
 
-	return r.db.QueryRowContext(ctx, query,
+	err = r.db.QueryRowContext(ctx, query,
 		user.Username,
 		user.Email,
 		user.Password,
 		user.CreatedAt,
 		user.UpdatedAt,
 	).Scan(&user.ID)
+
+	if err != nil {
+		log.Printf("Error creating user: %v", err)
+		return err
+	}
+
+	return nil
 }
 
 func (r *UserRepo) GetByID(ctx context.Context, id uint) (*domain.User, error) {

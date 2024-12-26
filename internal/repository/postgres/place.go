@@ -9,21 +9,26 @@ import (
 	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/handler/dto"
+	"ketu_backend_monolith_v1/internal/repository"
 
 	"github.com/jmoiron/sqlx"
 )
 
-type PlaceRepo struct {
-	db *sql.DB
+type placeRepository struct {
+	db *sqlx.DB
 }
 
-func NewPlaceRepository(db *sqlx.DB) *PlaceRepo {
-	return &PlaceRepo{
-		db: db.DB,
+// NewPlaceRepository creates a new instance of PlaceRepository
+func NewPlaceRepository(db *sqlx.DB) repository.PlaceRepository {
+	if db == nil {
+		panic("nil db provided to NewPlaceRepository")
+	}
+	return &placeRepository{
+		db: db,
 	}
 }
 
-func (r *PlaceRepo) Create(ctx context.Context, place *domain.Place) error {
+func (r *placeRepository) Create(ctx context.Context, place *domain.Place) error {
 	locationJSON, err := json.Marshal(place.Location)
 	if err != nil {
 		return fmt.Errorf("error marshaling location: %w", err)
@@ -49,7 +54,7 @@ func (r *PlaceRepo) Create(ctx context.Context, place *domain.Place) error {
 	return nil
 }
 
-func (r *PlaceRepo) List(ctx context.Context, offset, limit int) ([]*domain.Place, int, error) {
+func (r *placeRepository) List(ctx context.Context, offset, limit int) ([]*domain.Place, int, error) {
 	// First, get total count
 	var total int
 	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM places").Scan(&total)
@@ -107,7 +112,7 @@ func (r *PlaceRepo) List(ctx context.Context, offset, limit int) ([]*domain.Plac
 	return places, total, nil
 }
 
-func (r *PlaceRepo) Search(ctx context.Context, criteria dto.PlaceSearchCriteria) ([]*domain.Place, int, error) {
+func (r *placeRepository) Search(ctx context.Context, criteria dto.PlaceSearchCriteria) ([]*domain.Place, int, error) {
 	// Validate criteria
 	if criteria.Limit <= 0 {
 		criteria.Limit = 10 // default limit
@@ -206,7 +211,7 @@ func (r *PlaceRepo) Search(ctx context.Context, criteria dto.PlaceSearchCriteria
 	return places, total, nil
 }
 
-func (r *PlaceRepo) GetByID(ctx context.Context, id uint) (*domain.Place, error) {
+func (r *placeRepository) GetByID(ctx context.Context, id uint) (*domain.Place, error) {
 	query := `
 		 SELECT p.id, p.name, p.description, p.location, p.main_image, 
 				  p.created_at, p.updated_at,
@@ -244,7 +249,7 @@ func (r *PlaceRepo) GetByID(ctx context.Context, id uint) (*domain.Place, error)
 	return &place, nil
 }
 
-func (r *PlaceRepo) Update(ctx context.Context, place *domain.Place) error {
+func (r *placeRepository) Update(ctx context.Context, place *domain.Place) error {
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelReadCommitted,
 		ReadOnly:  false,
@@ -316,7 +321,7 @@ func (r *PlaceRepo) Update(ctx context.Context, place *domain.Place) error {
 	return nil
 }
 
-func (r *PlaceRepo) Delete(ctx context.Context, id uint) error {
+func (r *placeRepository) Delete(ctx context.Context, id uint) error {
 	tx, err := r.db.BeginTx(ctx, &sql.TxOptions{
 		Isolation: sql.LevelReadCommitted,
 		ReadOnly:  false,
