@@ -30,11 +30,8 @@ func NewAuthService(userRepo repository.UserRepository, cfg *configs.JWTConfig) 
 }
 
 func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO) (*dto.AuthResponseDTO, error) {
-	log.Printf("Starting registration process for user: %+v", req)
-
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		log.Printf("Password hashing failed: %v", err)
 		return nil, fmt.Errorf("password hashing error: %w", err)
 	}
 
@@ -46,20 +43,14 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO)
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
-	log.Printf("Created user object: %+v", user)
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
-		log.Printf("User creation failed: %v", err)
+
 		if isPgUniqueViolation(err) {
 			return nil, domain.ErrEmailExists
 		}
 		return nil, fmt.Errorf("database error: %w", err)
 	}
-
-	// Log success before token generation
-	log.Printf("User successfully created with ID: %d", user.ID)
-
-	log.Printf("User created successfully in database")
 
 	// Generate tokens
 	accessToken, err := s.generateToken(user, s.cfg.AccessTTL, s.cfg.AccessSecret)
@@ -81,39 +72,41 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO)
 }
 
 func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequestDTO) (*dto.AuthResponseDTO, error) {
-	log.Printf("=== Starting Login Process ===")
-	log.Printf("Login attempt for email: %s", req.Email)
+	// Add timeout context
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
 
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		log.Printf("Error retrieving user by email: %v", err)
+		log.Printf("GetByEmail error: %v", err)
 		return nil, domain.ErrInvalidCredentials
 	}
-	log.Printf("User found: %+v", user)
 
-	// Log password comparison attempt (don't log actual passwords!)
-	log.Printf("Comparing passwords for user: %s", user.Email)
+	// Use constant time comparison for password
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
 		log.Printf("Password comparison failed: %v", err)
 		return nil, domain.ErrInvalidCredentials
 	}
-	log.Printf("Password verified successfully")
 
 	accessToken, err := s.generateToken(user, s.cfg.AccessTTL, s.cfg.AccessSecret)
 	if err != nil {
-		return nil, err
+		log.Printf("Failed to generate access token: %v", err)
+		return nil, fmt.Errorf("failed to generate access token: %w", err)
 	}
 
 	refreshToken, err := s.generateToken(user, s.cfg.RefreshTTL, s.cfg.RefreshSecret)
 	if err != nil {
-		return nil, err
+		log.Printf("Failed to generate refresh token: %v", err)
+		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
+
+	expiresIn := time.Now().Add(s.cfg.AccessTTL).Unix()
 
 	return &dto.AuthResponseDTO{
 		User:         mapper.ToUserResponseDTO(user),
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
-		ExpiresIn:    time.Now().Add(s.cfg.AccessTTL).Unix(),
+		ExpiresIn:    expiresIn,
 	}, nil
 }
 
@@ -129,7 +122,7 @@ func (s *AuthService) generateToken(user *domain.User, ttl time.Duration, secret
 
 func isPgUniqueViolation(err error) bool {
 	if pgErr, ok := err.(*pq.Error); ok {
-		return pgErr.Code == "23505" // unique_violation
+		return pgErr.Code == "23505"
 	}
 	return false
 }

@@ -33,7 +33,9 @@ func ToUserResponseDTO(user *domain.User) *dto.UserResponseDTO {
 		ID:        user.ID,
 		Username:  user.Username,
 		Email:     user.Email,
+		Name:      user.Name,
 		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
 	}
 }
 

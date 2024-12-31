@@ -3,7 +3,9 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
+	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -13,9 +15,12 @@ type UserRepo struct {
 	db *sqlx.DB
 }
 
-func NewUserRepository(db *sqlx.DB) *UserRepo {
+func NewUserRepository(db *sqlx.DB) repository.UserRepository {
+	if db == nil {
+		 panic("nil db provided to NewUserRepository")
+	}
 	return &UserRepo{
-		db: db,
+		 db: db,
 	}
 }
 
@@ -77,18 +82,14 @@ func (r *UserRepo) GetByEmail(ctx context.Context, email string) (*domain.User, 
 	var user domain.User
 	query := `SELECT id, username, email, password, name, created_at, updated_at FROM users WHERE email = $1`
 
-	log.Printf("Executing query: %s", query)
-	err := r.db.GetContext(ctx, &user, query, email)
-	if err != nil {
+	if err := r.db.GetContext(ctx, &user, query, email); err != nil {
 		if err == sql.ErrNoRows {
-			log.Printf("No user found with email: %s", email)
-			return nil, domain.ErrUserNotFound
+			return nil, domain.ErrInvalidCredentials
 		}
 		log.Printf("Error querying user: %v", err)
-		return nil, err
+		return nil, fmt.Errorf("failed to get user: %w", err)
 	}
 
-	log.Printf("User found: %+v", user)
 	return &user, nil
 }
 

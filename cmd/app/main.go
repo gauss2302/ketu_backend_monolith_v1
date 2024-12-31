@@ -138,35 +138,6 @@ func setupRouter(h *handlers, m *middlewares, db *sqlx.DB) *fiber.App {
 		})
 	})
 
-	app.Get("/health/db", func(c *fiber.Ctx) error {
-		err := db.Ping()
-		if err != nil {
-			log.Printf("Database ping failed: %v", err)
-			return c.Status(503).JSON(fiber.Map{
-				"status": "error",
-				"error":  "Database connection failed",
-			})
-		}
-
-		// Check if users table exists
-		var exists bool
-		err = db.QueryRow("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')").Scan(&exists)
-		if err != nil {
-			log.Printf("Table check failed: %v", err)
-			return c.Status(503).JSON(fiber.Map{
-				"status": "error",
-				"error":  "Database table check failed",
-			})
-		}
-
-		return c.JSON(fiber.Map{
-			"status": "ok",
-			"tables": map[string]bool{
-				"users": exists,
-			},
-		})
-	})
-
 	// API routes
 	api := app.Group("/api")
 	v1 := api.Group("/v1")
