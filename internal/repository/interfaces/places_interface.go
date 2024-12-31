@@ -6,7 +6,6 @@ import (
 	"ketu_backend_monolith_v1/internal/dto"
 )
 
-// PlaceRepository defines the interface for place data operations
 type PlaceRepository interface {
 	Create(ctx context.Context, place *domain.Place) error
 	GetByID(ctx context.Context, id uint) (*domain.Place, error)

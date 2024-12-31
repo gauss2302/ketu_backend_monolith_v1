@@ -18,7 +18,6 @@ type placeRepository struct {
 	db *sqlx.DB
 }
 
-// NewPlaceRepository creates a new instance of PlaceRepository
 func NewPlaceRepository(db *sqlx.DB) repository.PlaceRepository {
 	if db == nil {
 		panic("nil db provided to NewPlaceRepository")

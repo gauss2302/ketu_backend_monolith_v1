@@ -120,7 +120,7 @@ func setupRouter(h *handlers, m *middlewares, db *sqlx.DB) *fiber.App {
 	})
 
 	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*", // Configure based on your needs
+		AllowOrigins: "*",
 		AllowMethods: "GET,POST,PUT,DELETE",
 		AllowHeaders: "Origin, Content-Type, Accept",
 	}))
@@ -162,14 +162,14 @@ func setupRouter(h *handlers, m *middlewares, db *sqlx.DB) *fiber.App {
 	places := v1.Group("/places")
 
 	// Public place routes
-	places.Get("/", h.place.List)         // List all places
-	places.Get("/search", h.place.Search) // Search places
-	places.Get("/:id", h.place.GetByID)   // Get place by ID
+	places.Get("/", h.place.List)         
+	places.Get("/search", h.place.Search) 
+	places.Get("/:id", h.place.GetByID)
 
 	// Protected place routes
 	places.Post("/", middleware.ValidateBody(&dto.PlaceCreateDTO{}), h.place.Create)
 	places.Put("/:id", middleware.ValidateBody(&dto.PlaceUpdateDTO{}), h.place.Update)
-	places.Delete("/:id", h.place.Delete) // Delete place
+	places.Delete("/:id", h.place.Delete)
 
 	// Print all registered routes for debugging
 	for _, route := range app.GetRoutes() {

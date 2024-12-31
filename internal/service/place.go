@@ -11,7 +11,7 @@ import (
 )
 
 type PlaceService struct {
-	repo repository.PlaceRepository // Use the interface instead of concrete type
+	repo repository.PlaceRepository
 }
 
 func NewPlaceService(repo repository.PlaceRepository) *PlaceService {
