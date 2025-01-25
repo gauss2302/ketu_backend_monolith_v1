@@ -61,7 +61,7 @@ func setDefaults() {
 
 	// Database defaults
 	viper.SetDefault("postgres.host", "localhost")
-	viper.SetDefault("postgres.port", "5430")
+	viper.SetDefault("postgres.port", "5432")
 	viper.SetDefault("postgres.username", "postgres")
 	viper.SetDefault("postgres.dbname", "myapp")
 	viper.SetDefault("postgres.sslmode", "disable")

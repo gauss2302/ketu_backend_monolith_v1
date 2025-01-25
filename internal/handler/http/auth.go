@@ -7,6 +7,7 @@ import (
 	"ketu_backend_monolith_v1/internal/dto"
 	"ketu_backend_monolith_v1/internal/service"
 	"log"
+	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -81,21 +82,34 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-// Optionally, you might want to add a refresh token endpoint:
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
-	// Get refresh token from Authorization header
-	refreshToken := c.Get("Authorization")
-	if refreshToken == "" {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Refresh token is required",
-		})
-	}
+    authHeader := c.Get("Authorization")
+    if authHeader == "" {
+        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+            "error": "Refresh token is required",
+        })
+    }
 
-	// TODO: Implement refresh token logic in AuthService
-	// response, err := h.authService.RefreshToken(c.Context(), refreshToken)
-	// ...
+    // Check Bearer token format
+    parts := strings.Split(authHeader, " ")
+    if len(parts) != 2 || parts[0] != "Bearer" {
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+            "error": "Invalid authorization header format",
+        })
+    }
 
-	return c.Status(fiber.StatusNotImplemented).JSON(fiber.Map{
-		"error": "Not implemented",
-	})
+    refreshToken := parts[1]
+    response, err := h.authService.RefreshToken(c.Context(), refreshToken)
+    if err != nil {
+        if errors.Is(err, domain.ErrInvalidCredentials) {
+            return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+                "error": "Invalid or expired refresh token",
+            })
+        }
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to refresh token",
+        })
+    }
+
+    return c.Status(fiber.StatusOK).JSON(response)
 }

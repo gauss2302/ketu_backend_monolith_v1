@@ -1,6 +1,6 @@
 postgres:
-  host: "postgres"
-  port: "5430"
+  host: "127.0.0.1"
+  port: "5432"
   username: "postgres"
   password: "postgres"
   dbname: "myapp"
@@ -8,7 +8,7 @@ postgres:
 
 server:
   port: "8090"
-  host: "0.0.0.0"  # Change this to allow external connections
+  host: "0.0.0.0"
 
 jwt:
   accessSecret: "your-access-secret"

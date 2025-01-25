@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/dto"
-	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
+	interfaces "ketu_backend_monolith_v1/internal/repository/interfaces"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -18,7 +18,7 @@ type placeRepository struct {
 	db *sqlx.DB
 }
 
-func NewPlaceRepository(db *sqlx.DB) repository.PlaceRepository {
+func NewPlaceRepository(db *sqlx.DB) interfaces.PlaceRepository {
 	if db == nil {
 		panic("nil db provided to NewPlaceRepository")
 	}

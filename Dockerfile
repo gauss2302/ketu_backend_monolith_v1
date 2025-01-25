@@ -15,7 +15,7 @@ RUN go mod download
 COPY . .
 
 # Copy migrations
-COPY pkg/database/migrations /app/pkg/database/migrations/
+COPY internal/pkg/database/migrations /app/internal/pkg/database/migrations/
 
 # Build the application
 RUN go build -o main cmd/app/main.go

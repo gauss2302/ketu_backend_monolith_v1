@@ -10,7 +10,7 @@ services:
         condition: service_healthy
     environment:
       - APP_POSTGRES_HOST=postgres
-      - APP_POSTGRES_PORT=5430  # Match PostgreSQL's port
+      - APP_POSTGRES_PORT=5430
       - APP_POSTGRES_USERNAME=postgres
       - APP_POSTGRES_PASSWORD=postgres
       - APP_POSTGRES_DBNAME=myapp
@@ -20,17 +20,17 @@ services:
 
   postgres:
     image: postgres:15-alpine
-    command: -p 5430  # Set PostgreSQL to listen on port 5430
+    command: -p 5432
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=myapp
     ports:
-      - "5430:5430"  # Map host port 5430 to container port 5430
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -p 5430"]  # Update healthcheck port
+      test: ["CMD-SHELL", "pg_isready -U postgres -p 5432"]
       interval: 5s
       timeout: 5s
       retries: 5

@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
-	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
+	"ketu_backend_monolith_v1/internal/repository/interfaces"
 	"log"
 
 	"github.com/jmoiron/sqlx"
@@ -15,12 +15,12 @@ type UserRepo struct {
 	db *sqlx.DB
 }
 
-func NewUserRepository(db *sqlx.DB) repository.UserRepository {
+func NewUserRepository(db *sqlx.DB) interfaces.UserRepository {
 	if db == nil {
-		 panic("nil db provided to NewUserRepository")
+		panic("nil db provided to NewUserRepository")
 	}
 	return &UserRepo{
-		 db: db,
+		db: db,
 	}
 }
 

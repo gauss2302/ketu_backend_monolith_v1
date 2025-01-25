@@ -120,6 +120,50 @@ func (s *AuthService) generateToken(user *domain.User, ttl time.Duration, secret
 	return token.SignedString([]byte(secret))
 }
 
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.AuthResponseDTO, error) {
+    // Parse and validate refresh token
+    token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
+        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+            return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+        }
+        return []byte(s.cfg.RefreshSecret), nil
+    })
+
+    if err != nil {
+        return nil, domain.ErrInvalidCredentials
+    }
+
+    claims, ok := token.Claims.(jwt.MapClaims)
+    if !ok || !token.Valid {
+        return nil, domain.ErrInvalidCredentials
+    }
+
+    // Get user from database
+    userID := uint(claims["user_id"].(float64))
+    user, err := s.userRepo.GetByID(ctx, userID)
+    if err != nil {
+        return nil, domain.ErrInvalidCredentials
+    }
+
+    // Generate new tokens
+    accessToken, err := s.generateToken(user, s.cfg.AccessTTL, s.cfg.AccessSecret)
+    if err != nil {
+        return nil, fmt.Errorf("failed to generate access token: %w", err)
+    }
+
+    newRefreshToken, err := s.generateToken(user, s.cfg.RefreshTTL, s.cfg.RefreshSecret)
+    if err != nil {
+        return nil, fmt.Errorf("failed to generate refresh token: %w", err)
+    }
+
+    return &dto.AuthResponseDTO{
+        User:         mapper.ToUserResponseDTO(user),
+        AccessToken:  accessToken,
+        RefreshToken: newRefreshToken,
+        ExpiresIn:    time.Now().Add(s.cfg.AccessTTL).Unix(),
+    }, nil
+}
+
 func isPgUniqueViolation(err error) bool {
 	if pgErr, ok := err.(*pq.Error); ok {
 		return pgErr.Code == "23505"
