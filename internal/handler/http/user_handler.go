@@ -21,6 +21,17 @@ func NewUserHandler(userService *service.UserService) *UserHandler {
 	}
 }
 
+// @Summary Create a new user
+// @Description Create a new user with the provided information
+// @Tags users
+// @Accept json
+// @Produce json
+// @Param user body dto.UserCreateDTO true "User creation data"
+// @Success 201 {object} dto.UserResponseDTO
+// @Failure 400 {object} ErrorResponse
+// @Failure 409 {object} ErrorResponse
+// @Failure 500 {object} ErrorResponse
+// @Router /api/v1/users [post]
 func (h *UserHandler) Create(c *fiber.Ctx) error {
 	var req dto.UserCreateDTO
 	if err := c.BodyParser(&req); err != nil {

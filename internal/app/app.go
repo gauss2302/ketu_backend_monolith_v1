@@ -68,4 +68,9 @@ func (a *App) Shutdown() error {
 		return fmt.Errorf("error closing database: %v", err)
 	}
 	return nil
+}
+
+// GetFiberApp returns the Fiber app instance
+func (a *App) GetFiberApp() *fiber.App {
+	return a.server
 } 
