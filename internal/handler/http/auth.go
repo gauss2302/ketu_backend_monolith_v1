@@ -3,6 +3,7 @@ package http
 
 import (
 	"errors"
+	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/dto"
 	"ketu_backend_monolith_v1/internal/service"
@@ -26,30 +27,35 @@ func NewAuthHandler(authService *service.AuthService) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(c *fiber.Ctx) error {
-	var req dto.RegisterRequestDTO
-	if err := c.BodyParser(&req); err != nil {
-		log.Printf("Body parsing failed: %v", err)
+	log.Printf("Handling register request")
+	
+	req, ok := c.Locals("validated").(*dto.RegisterRequestDTO)
+	if !ok {
+		log.Printf("Failed to get validated request from context")
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid request payload: " + err.Error(),
+			"error": "Invalid request body",
 		})
 	}
-	log.Printf("Parsed registration request: %+v", req) // Log the parsed request
 
-	response, err := h.authService.Register(c.Context(), &req)
+	log.Printf("Processing registration for email: %s", req.Email)
+
+	response, err := h.authService.Register(c.Context(), req)
 	if err != nil {
-		log.Printf("Registration failed with error: %v", err) // Log the detailed error
+		log.Printf("Registration error: %v", err)
 		if errors.Is(err, domain.ErrEmailExists) {
 			return c.Status(fiber.StatusConflict).JSON(fiber.Map{
 				"error": "Email already exists",
 			})
 		}
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": "Failed to register user: " + err.Error(), // Include error details
+			"error": fmt.Sprintf("Failed to register user: %v", err),
 		})
 	}
 
+	log.Printf("Registration successful for email: %s", req.Email)
 	return c.Status(fiber.StatusCreated).JSON(response)
 }
+
 func (h *AuthHandler) Login(c *fiber.Ctx) error {
 	var req dto.LoginRequestDTO
 	if err := c.BodyParser(&req); err != nil {

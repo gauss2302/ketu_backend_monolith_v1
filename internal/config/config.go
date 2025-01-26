@@ -2,6 +2,7 @@ package configs
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -43,13 +44,14 @@ type JWTConfig struct {
 
 func LoadConfig(path string) (*Config, error) {
 	env := getEnvironment()
+	log.Printf("Loading configuration for environment: %s", env)
 	
 	// Load environment-specific .env file
 	envFile := fmt.Sprintf(".env.%s", env)
 	if err := godotenv.Load(envFile); err != nil {
 		// Try fallback to default .env
 		if err := godotenv.Load(); err != nil {
-			fmt.Printf("Warning: no .env file found: %v\n", err)
+			log.Printf("Warning: no .env file found: %v", err)
 		}
 	}
 
@@ -71,6 +73,9 @@ func LoadConfig(path string) (*Config, error) {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
 			return nil, fmt.Errorf("error reading config file: %v", err)
 		}
+		log.Printf("No config file found, using environment variables and defaults")
+	} else {
+		log.Printf("Loaded config file successfully")
 	}
 
 	// Load environment variables
@@ -80,6 +85,10 @@ func LoadConfig(path string) (*Config, error) {
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %v", err)
 	}
+
+	// Log configuration (excluding sensitive data)
+	log.Printf("Server configuration - Host: %s, Port: %s", config.Server.Host, config.Server.Port)
+	log.Printf("Database configuration - Host: %s, Port: %s, Database: %s", config.DB.Host, config.DB.Port, config.DB.DBName)
 
 	// Validate required fields
 	if err := validateConfig(&config); err != nil {

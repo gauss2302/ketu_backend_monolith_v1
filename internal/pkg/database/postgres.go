@@ -30,6 +30,8 @@ func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 		cfg.SSLMode,
 	)
 
+	log.Printf("Attempting to connect to database at %s:%s", cfg.Host, cfg.Port)
+
 	// Add retry logic with exponential backoff
 	var db *sqlx.DB
 	var err error
@@ -50,6 +52,8 @@ func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("error connecting to postgres after %d attempts: %v", maxRetries, err)
 	}
 
+	log.Printf("Successfully connected to database. Testing connection pool...")
+
 	// Configure connection pool
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetConnMaxLifetime(time.Minute * connMaxLifetime)
@@ -61,12 +65,7 @@ func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 		return nil, fmt.Errorf("error verifying database connection: %v", err)
 	}
 
-	log.Println("Successfully connected to database")
-
-	// Run migrations
-	if err := RunMigrations(db); err != nil {
-		return nil, fmt.Errorf("failed to run migrations: %v", err)
-	}
+	log.Println("Database connection pool configured and verified")
 
 	return db, nil
 }

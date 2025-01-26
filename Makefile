@@ -6,6 +6,20 @@ dev:
 
 docker-dev:
 	APP_ENV=development docker-compose up --build -d
+	@echo "Waiting for services to start..."
+	@sleep 10
+	@echo "Creating database and running migrations..."
+	@docker-compose exec -T postgres psql -U postgres -c "CREATE DATABASE ke2;" || true
+	@echo "Database created (or already exists). Running migrations..."
+	@migrate -path internal/pkg/database/migrations \
+		-database "postgresql://postgres:postgres@localhost:5432/ke2?sslmode=disable" up || \
+		(echo "Migration failed. Retrying in 5s..." && sleep 5 && \
+		migrate -path internal/pkg/database/migrations \
+		-database "postgresql://postgres:postgres@localhost:5432/ke2?sslmode=disable" up)
+	@echo "Checking service status..."
+	@docker-compose ps
+	@echo "\nChecking application logs..."
+	@docker-compose logs app
 
 # Production commands
 prod:
@@ -26,19 +40,17 @@ docker-compose-down:
 r:
 	docker compose down && docker-compose up -d
 
-# Database creation and migrations
-create-db:
-	docker exec -i postgres psql -U postgres -c "CREATE DATABASE myapp;" || true
-
 # Database migrations
 migrate-up:
-	migrate -path internal/pkg/database/migrations -database "postgresql://$(APP_POSTGRES_USERNAME):$(APP_POSTGRES_PASSWORD)@$(APP_POSTGRES_HOST):$(APP_POSTGRES_PORT)/$(APP_POSTGRES_DBNAME)?sslmode=$(APP_POSTGRES_SSLMODE)" up
-
-migrate-down-test:
-	migrate -path internal/migrations -database "postgresql://postgres:postgres@localhost:5432/myapp?sslmode=disable" down
+	@echo "Running database migrations..."
+	@docker-compose exec -T postgres psql -U postgres -c "CREATE DATABASE ke2;" 2>/dev/null || true
+	migrate -path internal/pkg/database/migrations \
+		-database "postgresql://postgres:postgres@localhost:5432/ke2?sslmode=disable" up
 
 migrate-down:
-	migrate -path internal/pkg/database/migrations -database "postgresql://$(APP_POSTGRES_USERNAME):$(APP_POSTGRES_PASSWORD)@$(APP_POSTGRES_HOST):$(APP_POSTGRES_PORT)/$(APP_POSTGRES_DBNAME)?sslmode=$(APP_POSTGRES_SSLMODE)" down
+	@echo "Rolling back database migrations..."
+	migrate -path internal/pkg/database/migrations \
+		-database "postgresql://postgres:postgres@localhost:5432/ke2?sslmode=disable" down
 
 # Build commands
 build:
@@ -56,9 +68,39 @@ docker-run:
 # Utility commands
 clean:
 	docker-compose down -v
+	docker system prune -f
+	rm -rf postgres_data
 
 logs:
 	docker-compose logs -f
 
 test:
 	go test -v ./...
+
+# Debug commands
+status:
+	@echo "Docker containers status:"
+	@docker ps
+	@echo "\nApplication logs:"
+	@docker-compose logs app
+	@echo "\nPostgres logs:"
+	@docker-compose logs postgres
+
+# Add new commands for debugging
+check-app:
+	@echo "Checking application status..."
+	@curl -s http://localhost:8090/health || echo "Application is not responding"
+	@echo "\nApplication logs:"
+	@docker-compose logs app
+
+check-db:
+	@echo "Checking database status..."
+	@docker-compose exec -T postgres pg_isready -U postgres || echo "Database is not responding"
+	@echo "\nDatabase logs:"
+	@docker-compose logs postgres
+
+debug:
+	@make status
+	@echo "\nChecking individual services:"
+	@make check-app
+	@make check-db
