@@ -1,47 +1,55 @@
 package database
 
 import (
-	"errors"
+	"embed"
 	"fmt"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/postgres"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/jmoiron/sqlx"
 	"log"
+
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 )
 
-func RunMigrations(db *sqlx.DB) error {
-	log.Println("Running database migrations...")
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
-	sqlDB := db.DB
-	driver, err := postgres.WithInstance(sqlDB, &postgres.Config{})
+// RunMigrations runs database migrations
+func RunMigrations(dsn string) error {
+	log.Printf("Starting database migrations with DSN: %s", dsn)
+	
+	// Print available files in embedded FS for debugging
+	entries, err := migrationsFS.ReadDir("migrations")
 	if err != nil {
-		log.Printf("Driver error: %v", err)
-		return fmt.Errorf("could not create the postgres driver: %v", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://internal/pkg/database/migrations",
-		"myapp", driver)
-	if err != nil {
-		log.Printf("Migration initialization error: %v", err)
-		return fmt.Errorf("migration initialization failed: %v", err)
-	}
-
-	// Check and log the current migration version
-	version, dirty, err := m.Version()
-	if err != nil && !errors.Is(err, migrate.ErrNilVersion) {
-		log.Printf("Error getting migration version: %v", err)
+		log.Printf("Error reading migrations dir: %v", err)
 	} else {
-		log.Printf("Current migration version: %d, Dirty: %v", version, dirty)
+		log.Printf("Available migration files:")
+		for _, entry := range entries {
+			log.Printf("- %s", entry.Name())
+		}
+	}
+	
+	d, err := iofs.New(migrationsFS, "migrations")
+	if err != nil {
+		return fmt.Errorf("failed to create migration source: %w", err)
 	}
 
-	// Apply migrations
+	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
+	if err != nil {
+		return fmt.Errorf("failed to create migrate instance: %w", err)
+	}
+	defer m.Close()
+
+	// Skip forcing version to 0 as it's causing issues
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Printf("Migration error: %v", err)
-		return fmt.Errorf("migration failed: %v", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	log.Println("Migrations completed successfully")
+	version, dirty, err := m.Version()
+	if err != nil && err != migrate.ErrNilVersion {
+		log.Printf("Warning: could not get migration version: %v", err)
+	} else {
+		log.Printf("Migration completed. Version: %d, Dirty: %v", version, dirty)
+	}
+
 	return nil
 }

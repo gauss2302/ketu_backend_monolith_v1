@@ -7,13 +7,13 @@ type Restaurant struct {
 	OwnerID     uint      `db:"owner_id" json:"owner_id"`
 	Name        string    `db:"name" json:"name"`
 	Description string    `db:"description" json:"description"`
-	MainImage   string   `json:"main_image"`
-	Images      []string `json:"images"`
+	MainImage   string    `db:"main_image" json:"main_image"`
+	Images      []string  `db:"images" json:"images"`
 	IsVerified  bool      `db:"is_verified" json:"is_verified"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 	// Relations
-	Details         RestaurantDetails  `json:"details"`
+	Details  RestaurantDetails  `json:"details"`
 	Location RestaurantLocation `json:"location"`
 	Menu            Menu              `json:"menu"`
 }

@@ -5,6 +5,9 @@ server:
 postgres:
   host: "postgres"
   port: "5432"
+  username: "postgres"
+  password: "postgres"
+  dbname: "ke2"
   sslmode: "disable"
 
 jwt:

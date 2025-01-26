@@ -24,10 +24,10 @@ WORKDIR /app
 # Install necessary runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata
 
-# Copy the binary from builder
+# Copy the binary and required files
 COPY --from=builder /app/main .
 COPY --from=builder /app/configs ./configs
-COPY --from=builder /app/internal/pkg/database/migrations ./internal/pkg/database/migrations
+COPY --from=builder /app/internal/pkg/database/migrations/*.sql ./internal/pkg/database/migrations/
 
 # Create non-root user
 RUN adduser -D appuser

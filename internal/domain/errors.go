@@ -25,3 +25,8 @@ var (
 	ErrEmptyDescription  = errors.New("description cannot be empty")
 	ErrEmptyAddress      = errors.New("address cannot be empty")
 )
+
+var (
+	ErrRestaurantNotFound = errors.New("restaurant not found")
+	ErrUnauthorized      = errors.New("unauthorized")
+)

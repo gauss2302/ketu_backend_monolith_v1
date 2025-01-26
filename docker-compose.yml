@@ -8,10 +8,13 @@ services:
     ports:
       - "8090:8090"
     env_file:
-      - .env.${APP_ENV:-production}
+      - .env.development
     environment:
-      - APP_ENV=${APP_ENV:-production}
+      - APP_ENV=development
       - APP_POSTGRES_HOST=postgres
+      - APP_POSTGRES_USER=postgres
+      - APP_POSTGRES_PASSWORD=postgres
+      - APP_POSTGRES_DBNAME=ke2
     depends_on:
       postgres:
         condition: service_healthy
@@ -28,23 +31,17 @@ services:
   postgres:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=ke2
-      - POSTGRES_MULTIPLE_DATABASES=ke2
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ke2
     ports:
-      - "${APP_POSTGRES_PORT:-5432}:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh
     networks:
       - app-network
     healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          "pg_isready -U postgres && psql -U postgres -d ke2 -c '\\q'",
-        ]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
       timeout: 5s
       retries: 5

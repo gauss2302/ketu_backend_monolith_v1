@@ -12,9 +12,9 @@ import (
 )
 
 type handlers struct {
-	user  *http.UserHandler
-	auth  *http.AuthHandler
-	place *http.PlaceHandler
+	user       *http.UserHandler
+	auth       *http.AuthHandler
+	restaurant *http.RestaurantHandler
 }
 
 type middlewares struct {
@@ -26,18 +26,18 @@ func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middleware
 
 	// Repositories
 	userRepo := postgres.NewUserRepository(db)
-	placeRepo := postgres.NewPlaceRepository(db)
+	restaurantRepo := postgres.NewRestaurantRepository(db)
 
 	// Services
 	userService := service.NewUserService(userRepo)
 	authService := service.NewAuthService(userRepo, &cfg.JWT)
-	placeService := service.NewPlaceService(placeRepo)
+	restaurantService := service.NewRestaurantService(restaurantRepo)
 
 	// Handlers
 	handlers := &handlers{
-		user:  http.NewUserHandler(userService),
-		auth:  http.NewAuthHandler(authService),
-		place: http.NewPlaceHandler(placeService),
+		user:       http.NewUserHandler(userService),
+		auth:       http.NewAuthHandler(authService),
+		restaurant: http.NewRestaurantHandler(restaurantService),
 	}
 
 	// Middleware

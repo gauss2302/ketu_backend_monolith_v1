@@ -67,5 +67,12 @@ func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 
 	log.Println("Database connection pool configured and verified")
 
+	// Run migrations
+	migrationDSN := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.SSLMode)
+	if err := RunMigrations(migrationDSN); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	return db, nil
 }

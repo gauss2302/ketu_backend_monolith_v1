@@ -51,13 +51,14 @@ func setupProtectedRoutes(protected fiber.Router, h *handlers) {
 	users.Put("/:id", middleware.ValidateBody(&dto.UserUpdateDTO{}), h.user.Update)
 	users.Delete("/:id", h.user.Delete)
 
-	// Place routes
-	places := protected.Group("/places")
-	places.Post("/", middleware.ValidateBody(&dto.PlaceCreateDTO{}), h.place.Create)
-	places.Get("/", h.place.List)
-	places.Get("/:id", h.place.GetByID)
-	places.Put("/:id", middleware.ValidateBody(&dto.PlaceUpdateDTO{}), h.place.Update)
-	places.Delete("/:id", h.place.Delete)
+	// Restaurant routes
+	restaurants := protected.Group("/restaurants")
+	restaurants.Post("/", middleware.ValidateBody(&dto.CreateRestaurantDTO{}), h.restaurant.Create)
+	restaurants.Get("/", h.restaurant.List)
+	restaurants.Get("/my", h.restaurant.ListByOwner)
+	restaurants.Get("/:id", h.restaurant.GetByID)
+	restaurants.Put("/:id", middleware.ValidateBody(&dto.UpdateRestaurantDTO{}), h.restaurant.Update)
+	restaurants.Delete("/:id", h.restaurant.Delete)
 }
 
 func errorHandler() fiber.ErrorHandler {

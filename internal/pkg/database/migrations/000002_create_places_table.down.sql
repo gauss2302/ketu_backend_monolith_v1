@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS place_images;
-DROP TABLE IF EXISTS places;
