@@ -1,2 +1,17 @@
-*.env
-.idea
+# Environment files
+.env*
+!.env.example
+
+# Build
+bin/
+dist/
+
+# IDE
+.idea/
+.vscode/
+
+# Logs
+*.log
+
+# OS
+.DS_Store

@@ -15,6 +15,8 @@ const (
 	connMaxLifetime = 15 // minutes
 	maxIdleConns    = 25
 	connMaxIdleTime = 10 // minutes
+	maxRetries      = 10
+	retryDelay      = 5 * time.Second
 )
 
 func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
@@ -28,27 +30,38 @@ func NewPostgresDB(cfg *configs.PostgresConfig) (*sqlx.DB, error) {
 		cfg.SSLMode,
 	)
 
-	// Add retry logic
+	// Add retry logic with exponential backoff
 	var db *sqlx.DB
 	var err error
-	maxRetries := 5
+	
 	for i := 0; i < maxRetries; i++ {
 		db, err = sqlx.Connect("postgres", dsn)
 		if err == nil {
 			break
 		}
-		log.Printf("Failed to connect to database, attempt %d/%d: %v", i+1, maxRetries, err)
-		time.Sleep(time.Second * 5)
+		
+		retryTime := retryDelay * time.Duration(i+1)
+		log.Printf("Failed to connect to database (attempt %d/%d): %v. Retrying in %v...", 
+			i+1, maxRetries, err, retryTime)
+		time.Sleep(retryTime)
 	}
+
 	if err != nil {
 		return nil, fmt.Errorf("error connecting to postgres after %d attempts: %v", maxRetries, err)
 	}
 
-	// Set connection pool settings
+	// Configure connection pool
 	db.SetMaxOpenConns(maxOpenConns)
 	db.SetConnMaxLifetime(time.Minute * connMaxLifetime)
 	db.SetMaxIdleConns(maxIdleConns)
-	db.SetConnMaxIdleTime(time.Second * connMaxIdleTime)
+	db.SetConnMaxIdleTime(time.Minute * connMaxIdleTime)
+
+	// Verify connection
+	if err := db.Ping(); err != nil {
+		return nil, fmt.Errorf("error verifying database connection: %v", err)
+	}
+
+	log.Println("Successfully connected to database")
 
 	// Run migrations
 	if err := RunMigrations(db); err != nil {

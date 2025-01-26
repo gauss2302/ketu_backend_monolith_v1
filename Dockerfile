@@ -1,27 +1,43 @@
-FROM golang:1.23-alpine
+# Build stage
+FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
-# Install necessary build tools
-RUN apk add --no-cache gcc musl-dev
+# Install required build tools
+RUN apk add --no-cache git make
 
-# Copy go mod and sum files
+# Copy go mod files
 COPY go.mod go.sum ./
-
-# Download dependencies
 RUN go mod download
 
-# Copy the source code
+# Copy source code
 COPY . .
 
-# Copy migrations
-COPY internal/pkg/database/migrations /app/internal/pkg/database/migrations/
-
 # Build the application
-RUN go build -o main cmd/app/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/main ./cmd/app
+
+# Final stage
+FROM alpine:3.18
+
+WORKDIR /app
+
+# Install necessary runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata
+
+# Copy the binary from builder
+COPY --from=builder /app/main .
+COPY --from=builder /app/configs ./configs
+COPY --from=builder /app/internal/pkg/database/migrations ./internal/pkg/database/migrations
+
+# Create non-root user
+RUN adduser -D appuser
+USER appuser
 
 # Expose port
 EXPOSE 8090
 
-# Run the application
+# Set environment variables
+ENV APP_ENV=production
+
+# Command to run the application
 CMD ["./main"]

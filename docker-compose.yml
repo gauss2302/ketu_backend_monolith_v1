@@ -1,45 +1,45 @@
-version: '3.8'
+version: "3.8"
 name: Ketu_v1
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8090:8090"
+    env_file:
+      - .env.${APP_ENV:-production}
+    environment:
+      - APP_ENV=${APP_ENV:-production}
     depends_on:
       postgres:
         condition: service_healthy
-    environment:
-      - APP_POSTGRES_HOST=postgres
-      - APP_POSTGRES_PORT=5430
-      - APP_POSTGRES_USERNAME=postgres
-      - APP_POSTGRES_PASSWORD=postgres
-      - APP_POSTGRES_DBNAME=myapp
-      - APP_POSTGRES_SSLMODE=disable
     networks:
       - app-network
+    restart: unless-stopped
 
   postgres:
     image: postgres:15-alpine
-    command: -p 5432
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=myapp
+      - POSTGRES_USER=${APP_POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${APP_POSTGRES_PASSWORD}
+      - POSTGRES_DB=${APP_POSTGRES_DBNAME}
     ports:
-      - "5432:5432"
+      - "${APP_POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -p 5432"]
+      test: ["CMD-SHELL", "pg_isready -U ${APP_POSTGRES_USERNAME}"]
       interval: 5s
       timeout: 5s
       retries: 5
-    networks:
-      - app-network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
 
 networks:
   app-network:
     driver: bridge
-
-volumes:
-  postgres_data:

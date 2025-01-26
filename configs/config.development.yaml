@@ -1,0 +1,15 @@
+server:
+  port: "8090"
+  host: "localhost"
+
+postgres:
+  host: "localhost"
+  port: "5432"
+  sslmode: "disable"
+
+jwt:
+  accessTTL: "15m"
+  refreshTTL: "720h"
+
+logger:
+  level: "debug"
