@@ -22,22 +22,14 @@ FROM alpine:3.18
 WORKDIR /app
 
 # Install necessary runtime dependencies
-RUN apk add --no-cache ca-certificates tzdata
+RUN apk add --no-cache ca-certificates tzdata curl
 
 # Copy the binary and required files
 COPY --from=builder /app/main .
-COPY --from=builder /app/configs ./configs
 COPY --from=builder /app/internal/pkg/database/migrations/*.sql ./internal/pkg/database/migrations/
-
-# Create non-root user
-RUN adduser -D appuser
-USER appuser
 
 # Expose port
 EXPOSE 8090
-
-# Set environment variables
-ENV APP_ENV=production
 
 # Command to run the application
 CMD ["./main"]

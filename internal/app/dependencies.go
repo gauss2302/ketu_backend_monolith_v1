@@ -8,7 +8,9 @@ import (
 	"ketu_backend_monolith_v1/internal/service"
 	"log"
 
-	"github.com/jmoiron/sqlx"
+	"ketu_backend_monolith_v1/internal/pkg/redis"
+
+	"github.com/gofiber/fiber/v2"
 )
 
 type handlers struct {
@@ -21,17 +23,13 @@ type middlewares struct {
 	auth *middleware.AuthMiddleware
 }
 
-func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middlewares) {
+func setupDependencies(cfg *configs.Config, repos *postgres.Repositories, redisClient *redis.Client) (*handlers, *middlewares) {
 	log.Printf("Setting up dependencies...")
 
-	// Repositories
-	userRepo := postgres.NewUserRepository(db)
-	restaurantRepo := postgres.NewRestaurantRepository(db)
-
 	// Services
-	userService := service.NewUserService(userRepo)
-	authService := service.NewAuthService(userRepo, &cfg.JWT)
-	restaurantService := service.NewRestaurantService(restaurantRepo)
+	userService := service.NewUserService(repos.User)
+	authService := service.NewAuthService(repos.User, redisClient, &cfg.JWT)
+	restaurantService := service.NewRestaurantService(repos.Restaurant)
 
 	// Handlers
 	handlers := &handlers{
@@ -46,4 +44,21 @@ func setupDependencies(cfg *configs.Config, db *sqlx.DB) (*handlers, *middleware
 	}
 
 	return handlers, middlewares
-} 
+}
+
+type appDependencies struct {
+	handlers    *handlers
+	middlewares *middlewares
+}
+
+func initDependencies(cfg *configs.Config, repos *postgres.Repositories, redisClient *redis.Client) *appDependencies {
+	h, m := setupDependencies(cfg, repos, redisClient)
+	return &appDependencies{
+		handlers:    h,
+		middlewares: m,
+	}
+}
+
+func initServer(deps *appDependencies) *fiber.App {
+	return setupRouter(deps.handlers, deps.middlewares)
+}

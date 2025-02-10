@@ -69,15 +69,16 @@ func (m *AuthMiddleware) Authenticate() fiber.Handler {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Authorization header is required",
+				"error": "Authorization header is missing",
+				"code": "AUTH_HEADER_MISSING",
 			})
 		}
 
-		// Check Bearer token format
 		parts := strings.Split(authHeader, " ")
 		if len(parts) != 2 || parts[0] != "Bearer" {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid authorization header format",
+				"error": "Invalid authorization format. Use 'Bearer <token>'",
+				"code": "INVALID_AUTH_FORMAT",
 			})
 		}
 
@@ -90,7 +91,8 @@ func (m *AuthMiddleware) Authenticate() fiber.Handler {
 
 		if err != nil {
 			return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-				"error": "Invalid token",
+				"error": fmt.Sprintf("Invalid token: %v", err),
+				"code": "INVALID_TOKEN",
 			})
 		}
 

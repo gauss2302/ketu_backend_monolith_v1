@@ -1,4 +1,4 @@
-package configs
+package config
 
 import (
 	"fmt"
@@ -10,172 +10,90 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Config holds the application configurations
 type Config struct {
 	DB     PostgresConfig `mapstructure:"postgres"`
-	Server ServerConfig   `mapstructure:"server"`
+	Server ServerConfig   `mapstructure:"server"` // Add ServerConfig
 	JWT    JWTConfig      `mapstructure:"jwt"`
-	// Migration MigrationConfig `mapstructure:"migration"`
+	Redis  RedisConfig   `mapstructure:"redis"`
 }
 
-// type MigrationConfig struct {
-// 	Path string `mapstructure:"path"`
-// }
-
+// PostgresConfig holds PostgreSQL configurations
 type PostgresConfig struct {
-	Host     string `mapstructure:"host"`
-	Port     string `mapstructure:"port"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
-	DBName   string `mapstructure:"dbname"`
-	SSLMode  string `mapstructure:"sslmode"`
+	URL string `mapstructure:"url"`
 }
 
+// ServerConfig holds server configurations
 type ServerConfig struct {
 	Port string `mapstructure:"port"`
 	Host string `mapstructure:"host"`
 }
 
+// JWTConfig holds JWT configurations
 type JWTConfig struct {
-	AccessSecret  string        `mapstructure:"accessSecret"`
-	RefreshSecret string        `mapstructure:"refreshSecret"`
-	AccessTTL     time.Duration `mapstructure:"accessTTL"`
-	RefreshTTL    time.Duration `mapstructure:"refreshTTL"`
+	AccessSecret  string        `mapstructure:"accesssecret"`
+	RefreshSecret string        `mapstructure:"refreshsecret"`
+	AccessTTL     time.Duration `mapstructure:"accessttl"`
+	RefreshTTL    time.Duration `mapstructure:"refreshttl"`
 }
 
-func LoadConfig(path string) (*Config, error) {
-	env := getEnvironment()
-	log.Printf("Loading configuration for environment: %s", env)
-	
-	// Load environment-specific .env file
-	envFile := fmt.Sprintf(".env.%s", env)
-	if err := godotenv.Load(envFile); err != nil {
-		// Try fallback to default .env
-		if err := godotenv.Load(); err != nil {
-			log.Printf("Warning: no .env file found: %v", err)
-		}
+// RedisConfig holds Redis configurations
+type RedisConfig struct {
+	URL      string `mapstructure:"url"`
+	Password string `mapstructure:"password"`
+	DB       int    `mapstructure:"db"`
+}
+
+// LoadConfig initializes and returns the application configuration
+func LoadConfig() (*Config, error) {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Printf("Warning: no .env file found: %v", err)
 	}
 
-	// Configure Viper
-	viper.SetConfigName(fmt.Sprintf("config.%s", env))
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(path)
+	// Viper configuration
+	viper.AutomaticEnv() // Automatically read environment variables
 
-	// Enable environment variables
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("APP")
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	// Replace dots with underscores in environment variables
+	replacer := strings.NewReplacer(".", "_")
+	viper.SetEnvKeyReplacer(replacer)
 
-	// Set defaults based on environment
-	setDefaults(env)
+	// Explicitly bind environment variables to configuration keys
+	bindEnvs()
 
-	// Try to read config file (optional)
-	if err := viper.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading config file: %v", err)
-		}
-		log.Printf("No config file found, using environment variables and defaults")
-	} else {
-		log.Printf("Loaded config file successfully")
-	}
-
-	// Load environment variables
-	loadFromEnv()
+	// Set default values
+	viper.SetDefault("server.host", "0.0.0.0")  // Allow external connections
+	viper.SetDefault("server.port", "8090")
 
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("error unmarshaling config: %v", err)
 	}
 
-	// Log configuration (excluding sensitive data)
-	log.Printf("Server configuration - Host: %s, Port: %s", config.Server.Host, config.Server.Port)
-	log.Printf("Database configuration - Host: %s, Port: %s, Database: %s", config.DB.Host, config.DB.Port, config.DB.DBName)
-
-	// Validate required fields
-	if err := validateConfig(&config); err != nil {
-		return nil, err
-	}
+	// Update logging to use the new URL field
+	log.Printf("Database configuration loaded with URL schema: %s", "postgres://****:****@" + config.DB.URL)
 
 	return &config, nil
 }
 
-func getEnvironment() string {
-	env := viper.GetString("APP_ENV")
-	if env == "" {
-		env = "development" // Default to development
-	}
-	return env
-}
-
-func loadFromEnv() {
-	// Server
-	viper.BindEnv("server.port", "APP_SERVER_PORT")
-	viper.BindEnv("server.host", "APP_SERVER_HOST")
-
-	// Database
-	viper.BindEnv("postgres.host", "APP_POSTGRES_HOST")
-	viper.BindEnv("postgres.port", "APP_POSTGRES_PORT")
-	viper.BindEnv("postgres.username", "APP_POSTGRES_USERNAME")
-	viper.BindEnv("postgres.password", "APP_POSTGRES_PASSWORD")
-	viper.BindEnv("postgres.dbname", "APP_POSTGRES_DBNAME")
-	viper.BindEnv("postgres.sslmode", "APP_POSTGRES_SSLMODE")
-
-	// JWT
-	viper.BindEnv("jwt.accessSecret", "APP_JWT_ACCESSSECRET")
-	viper.BindEnv("jwt.refreshSecret", "APP_JWT_REFRESHSECRET")
-	viper.BindEnv("jwt.accessTTL", "APP_JWT_ACCESSTTL")
-	viper.BindEnv("jwt.refreshTTL", "APP_JWT_REFRESHTTL")
-}
-
-func validateConfig(config *Config) error {
-	// Validate database configuration
-	if config.DB.Host == "" {
-		return fmt.Errorf("database host is required")
-	}
-	if config.DB.Port == "" {
-		return fmt.Errorf("database port is required")
-	}
-	if config.DB.Username == "" {
-		return fmt.Errorf("database username is required")
-	}
-	if config.DB.Password == "" {
-		return fmt.Errorf("database password is required")
-	}
-	if config.DB.DBName == "" {
-		return fmt.Errorf("database name is required")
+// bindEnvs binds each configuration key to its corresponding environment variable
+func bindEnvs() {
+	envBindings := map[string]string{
+		"postgres.url": "DATABASE_URL",
+		"server.port":       "APP_SERVER_PORT", // Bind server port
+		"server.host":       "APP_SERVER_HOST", // Bind server host
+		"jwt.accessSecret":  "APP_JWT_ACCESSSECRET",
+		"jwt.refreshSecret": "APP_JWT_REFRESHSECRET",
+		"jwt.accessTTL":     "APP_JWT_ACCESSTTL",
+		"jwt.refreshTTL":    "APP_JWT_REFRESHTTL",
+		"redis.url":      "REDIS_URL",
+		"redis.password": "REDIS_PASSWORD",
+		"redis.db":       "REDIS_DB",
 	}
 
-	// Validate JWT configuration
-	if config.JWT.AccessSecret == "" {
-		return fmt.Errorf("JWT access secret is required")
+	for configKey, envVar := range envBindings {
+		if err := viper.BindEnv(configKey, envVar); err != nil {
+			log.Fatalf("Error binding %s: %v", configKey, err)
+		}
 	}
-	if config.JWT.RefreshSecret == "" {
-		return fmt.Errorf("JWT refresh secret is required")
-	}
-
-	return nil
-}
-
-func setDefaults(env string) {
-	// Common defaults
-	viper.SetDefault("server.port", "8090")
-	
-	// Environment-specific defaults
-	switch env {
-	case "production":
-		viper.SetDefault("server.host", "0.0.0.0")
-		viper.SetDefault("postgres.host", "postgres")
-		viper.SetDefault("logger.level", "info")
-	default: // development
-		viper.SetDefault("server.host", "localhost")
-		viper.SetDefault("postgres.host", "localhost")
-		viper.SetDefault("logger.level", "debug")
-	}
-
-	// Database defaults
-	viper.SetDefault("postgres.port", "5432")
-	viper.SetDefault("postgres.sslmode", "disable")
-
-	// JWT defaults
-	viper.SetDefault("jwt.accessTTL", "15m")
-	viper.SetDefault("jwt.refreshTTL", "720h")
 }

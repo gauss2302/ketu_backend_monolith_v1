@@ -29,12 +29,12 @@ docker-prod:
 	APP_ENV=production docker-compose up --build -d
 
 # Docker commands
-docker-compose-up:
+up:
 	docker-compose up --build -d
 	@echo "Waiting for PostgreSQL to start..."
 	@sleep 5
 
-docker-compose-down:
+down:
 	docker-compose down
 
 r:

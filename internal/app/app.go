@@ -2,59 +2,67 @@ package app
 
 import (
 	"fmt"
-	configs "ketu_backend_monolith_v1/internal/config"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"ketu_backend_monolith_v1/internal/config"
+	"ketu_backend_monolith_v1/internal/pkg/database"
+	"ketu_backend_monolith_v1/internal/pkg/redis"
+	"ketu_backend_monolith_v1/internal/repository/postgres"
+
 	"github.com/gofiber/fiber/v2"
-	"github.com/jmoiron/sqlx"
 )
 
 type App struct {
-	config *configs.Config
-	db     *sqlx.DB
+	config *config.Config
+	db     *database.DB
+	redis  *redis.Client
+	repos  *postgres.Repositories
 	server *fiber.App
 }
 
-func New(configPath string) (*App, error) {
-	// Initialize config
-	config, err := configs.LoadConfig(configPath)
+func New() (*App, error) {
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load config: %v", err)
 	}
 
-	// Initialize database
-	db, err := initDB(config)
+	db, err := database.NewPostgresDB(cfg.DB.URL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to init database: %v", err)
 	}
 
-	// Initialize dependencies
-	deps := initDependencies(config, db)
+	redisClient, err := redis.NewRedisClient(&cfg.Redis)
+	if err != nil {
+		return nil, fmt.Errorf("failed to init Redis: %v", err)
+	}
 
-	// Initialize server
-	server := initServer(deps)
+	repos := postgres.NewRepositories(db)
+	server := initServer(initDependencies(cfg, repos, redisClient))
 
 	return &App{
-		config: config,
+		config: cfg,
 		db:     db,
+		redis:  redisClient,
+		repos:  repos,
 		server: server,
 	}, nil
 }
 
 func (a *App) Run() error {
-	// Setup graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-
 	go func() {
 		<-quit
 		log.Println("Shutting down server...")
-		_ = a.Shutdown()
+		if err := a.Shutdown(); err != nil {
+			log.Fatalf("Failed to shutdown server: %v", err)
+		}
 	}()
 
+	// Assuming the server configuration is directly under config
 	addr := fmt.Sprintf("%s:%s", a.config.Server.Host, a.config.Server.Port)
 	log.Printf("Server starting on %s", addr)
 	return a.server.Listen(addr)
@@ -62,15 +70,17 @@ func (a *App) Run() error {
 
 func (a *App) Shutdown() error {
 	if err := a.server.Shutdown(); err != nil {
-		return fmt.Errorf("error shutting down server: %v", err)
+		return fmt.Errorf("error shutting down HTTP server: %v", err)
 	}
 	if err := a.db.Close(); err != nil {
-		return fmt.Errorf("error closing database: %v", err)
+		return fmt.Errorf("error closing database connection: %v", err)
+	}
+	if err := a.redis.Close(); err != nil {
+		return fmt.Errorf("error closing redis connection: %v", err)
 	}
 	return nil
 }
 
-// GetFiberApp returns the Fiber app instance
 func (a *App) GetFiberApp() *fiber.App {
 	return a.server
-} 
+}

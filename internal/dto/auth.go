@@ -15,6 +15,10 @@ type RegisterRequestDTO struct {
 type AuthResponseDTO struct {
 	User         *UserResponseDTO `json:"user"`
 	AccessToken  string           `json:"accessToken"`
-	RefreshToken string           `json:"refreshToken"`
 	ExpiresIn    int64            `json:"expiresIn"`
+}
+
+type TokenRefreshResponse struct {
+	AccessToken string `json:"accessToken"`
+	ExpiresIn   int64  `json:"expiresIn"`
 }

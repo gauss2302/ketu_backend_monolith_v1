@@ -8,7 +8,6 @@ import (
 	"ketu_backend_monolith_v1/internal/dto"
 	"ketu_backend_monolith_v1/internal/service"
 	"log"
-	"strings"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
@@ -89,33 +88,27 @@ func (h *AuthHandler) Login(c *fiber.Ctx) error {
 }
 
 func (h *AuthHandler) RefreshToken(c *fiber.Ctx) error {
-    authHeader := c.Get("Authorization")
-    if authHeader == "" {
-        return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-            "error": "Refresh token is required",
-        })
-    }
-
-    // Check Bearer token format
-    parts := strings.Split(authHeader, " ")
-    if len(parts) != 2 || parts[0] != "Bearer" {
-        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-            "error": "Invalid authorization header format",
-        })
-    }
-
-    refreshToken := parts[1]
-    response, err := h.authService.RefreshToken(c.Context(), refreshToken)
+    userID := c.Locals("user_id").(uint)
+    
+    response, err := h.authService.RefreshToken(c.Context(), userID)
     if err != nil {
-        if errors.Is(err, domain.ErrInvalidCredentials) {
-            return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-                "error": "Invalid or expired refresh token",
-            })
-        }
-        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+        return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
             "error": "Failed to refresh token",
+            "details": err.Error(),
         })
     }
 
-    return c.Status(fiber.StatusOK).JSON(response)
+    return c.JSON(response)
+}
+
+func (h *AuthHandler) Logout(c *fiber.Ctx) error {
+    userID := c.Locals("user_id").(uint)
+    
+    if err := h.authService.Logout(c.Context(), userID); err != nil {
+        return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+            "error": "Failed to logout",
+        })
+    }
+
+    return c.SendStatus(fiber.StatusNoContent)
 }

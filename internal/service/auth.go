@@ -12,6 +12,8 @@ import (
 	"log"
 	"time"
 
+	redisClient "ketu_backend_monolith_v1/internal/pkg/redis"
+
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
@@ -19,12 +21,14 @@ import (
 
 type AuthService struct {
 	userRepo repository.UserRepository
+	redis    *redisClient.Client
 	cfg      *configs.JWTConfig
 }
 
-func NewAuthService(userRepo repository.UserRepository, cfg *configs.JWTConfig) *AuthService {
+func NewAuthService(userRepo repository.UserRepository, redis *redisClient.Client, cfg *configs.JWTConfig) *AuthService {
 	return &AuthService{
 		userRepo: userRepo,
+		redis:    redis,
 		cfg:      cfg,
 	}
 }
@@ -63,23 +67,23 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO)
 		return nil, err
 	}
 
+	// Store refresh token in Redis
+	err = s.redis.StoreRefreshToken(ctx, user.ID, refreshToken, s.cfg.RefreshTTL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
 	return &dto.AuthResponseDTO{
 		User:         mapper.ToUserResponseDTO(user),
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
 		ExpiresIn:    time.Now().Add(s.cfg.AccessTTL).Unix(),
 	}, nil
 }
 
 func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequestDTO) (*dto.AuthResponseDTO, error) {
-	// Add timeout context
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-
 	user, err := s.userRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
-		log.Printf("GetByEmail error: %v", err)
-		return nil, domain.ErrInvalidCredentials
+		return nil, err
 	}
 
 	// Use constant time comparison for password
@@ -88,6 +92,7 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequestDTO) (*dto
 		return nil, domain.ErrInvalidCredentials
 	}
 
+	// Generate tokens
 	accessToken, err := s.generateToken(user, s.cfg.AccessTTL, s.cfg.AccessSecret)
 	if err != nil {
 		log.Printf("Failed to generate access token: %v", err)
@@ -100,12 +105,17 @@ func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequestDTO) (*dto
 		return nil, fmt.Errorf("failed to generate refresh token: %w", err)
 	}
 
+	// Store refresh token in Redis
+	err = s.redis.StoreRefreshToken(ctx, user.ID, refreshToken, s.cfg.RefreshTTL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to store refresh token: %w", err)
+	}
+
 	expiresIn := time.Now().Add(s.cfg.AccessTTL).Unix()
 
 	return &dto.AuthResponseDTO{
 		User:         mapper.ToUserResponseDTO(user),
 		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
 		ExpiresIn:    expiresIn,
 	}, nil
 }
@@ -120,48 +130,47 @@ func (s *AuthService) generateToken(user *domain.User, ttl time.Duration, secret
 	return token.SignedString([]byte(secret))
 }
 
-func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (*dto.AuthResponseDTO, error) {
-    // Parse and validate refresh token
-    token, err := jwt.Parse(refreshToken, func(token *jwt.Token) (interface{}, error) {
-        if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-            return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-        }
-        return []byte(s.cfg.RefreshSecret), nil
-    })
+func (s *AuthService) RefreshToken(ctx context.Context, userID uint) (*dto.TokenRefreshResponse, error) {
+	// Get stored refresh token
+	storedToken, err := s.redis.GetRefreshToken(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid refresh token: %w", err)
+	}
 
-    if err != nil {
-        return nil, domain.ErrInvalidCredentials
-    }
+	// Validate stored refresh token
+	token, err := jwt.Parse(storedToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
+		}
+		return []byte(s.cfg.RefreshSecret), nil
+	})
 
-    claims, ok := token.Claims.(jwt.MapClaims)
-    if !ok || !token.Valid {
-        return nil, domain.ErrInvalidCredentials
-    }
+	if err != nil || !token.Valid {
+		// If token is invalid, remove it from Redis
+		_ = s.redis.DeleteRefreshToken(ctx, userID)
+		return nil, fmt.Errorf("stored refresh token is invalid: %w", err)
+	}
 
-    // Get user from database
-    userID := uint(claims["user_id"].(float64))
-    user, err := s.userRepo.GetByID(ctx, userID)
-    if err != nil {
-        return nil, domain.ErrInvalidCredentials
-    }
+	// Get user
+	user, err := s.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
 
-    // Generate new tokens
-    accessToken, err := s.generateToken(user, s.cfg.AccessTTL, s.cfg.AccessSecret)
-    if err != nil {
-        return nil, fmt.Errorf("failed to generate access token: %w", err)
-    }
+	// Generate new access token
+	accessToken, err := s.generateToken(user, s.cfg.AccessTTL, s.cfg.AccessSecret)
+	if err != nil {
+		return nil, err
+	}
 
-    newRefreshToken, err := s.generateToken(user, s.cfg.RefreshTTL, s.cfg.RefreshSecret)
-    if err != nil {
-        return nil, fmt.Errorf("failed to generate refresh token: %w", err)
-    }
+	return &dto.TokenRefreshResponse{
+		AccessToken: accessToken,
+		ExpiresIn:   int64(s.cfg.AccessTTL.Seconds()),
+	}, nil
+}
 
-    return &dto.AuthResponseDTO{
-        User:         mapper.ToUserResponseDTO(user),
-        AccessToken:  accessToken,
-        RefreshToken: newRefreshToken,
-        ExpiresIn:    time.Now().Add(s.cfg.AccessTTL).Unix(),
-    }, nil
+func (s *AuthService) Logout(ctx context.Context, userID uint) error {
+	return s.redis.DeleteRefreshToken(ctx, userID)
 }
 
 func isPgUniqueViolation(err error) bool {

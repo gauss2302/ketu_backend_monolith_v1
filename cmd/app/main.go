@@ -20,7 +20,6 @@ package main
 // @name Authorization
 
 import (
-	_ "ketu_backend_monolith_v1/docs"
 	"ketu_backend_monolith_v1/internal/app"
 	"log"
 
@@ -28,7 +27,7 @@ import (
 )
 
 func main() {
-	application, err := app.New("configs")
+	application, err := app.New()
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
 	}

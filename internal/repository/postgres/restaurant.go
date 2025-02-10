@@ -5,15 +5,18 @@ import (
 	"fmt"
 	"ketu_backend_monolith_v1/internal/domain"
 	"ketu_backend_monolith_v1/internal/dto"
-
-	"github.com/jmoiron/sqlx"
+	"ketu_backend_monolith_v1/internal/pkg/database"
+	"ketu_backend_monolith_v1/internal/repository/interfaces"
 )
 
 type RestaurantRepository struct {
-	db *sqlx.DB
+	db *database.DB
 }
 
-func NewRestaurantRepository(db *sqlx.DB) *RestaurantRepository {
+func NewRestaurantRepository(db *database.DB) interfaces.RestaurantRepository {
+	if db == nil {
+		panic("nil db provided to NewRestaurantRepository")
+	}
 	return &RestaurantRepository{db: db}
 }
 

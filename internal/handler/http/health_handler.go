@@ -8,8 +8,9 @@ func NewHealthHandler() *HealthHandler {
 	return &HealthHandler{}
 }
 
-func (h *HealthHandler) Handle(c *fiber.Ctx) error {
+// Renamed method to avoid conflict
+func (h *HealthHandler) HandleHealthCheck(c *fiber.Ctx) error {
 	return c.JSON(fiber.Map{
 		"status": "ok",
 	})
-} 
+}
