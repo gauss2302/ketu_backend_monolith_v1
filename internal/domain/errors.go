@@ -15,6 +15,10 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 )
 
+var (
+	ErrOwnerNotFound = errors.New("onwer not found")
+)
+
 // Place-related errors
 var (
 	ErrPlaceNotFound     = errors.New("place not found")

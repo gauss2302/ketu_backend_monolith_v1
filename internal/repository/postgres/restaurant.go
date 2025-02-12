@@ -27,6 +27,17 @@ func (r *RestaurantRepository) Create(ctx context.Context, restaurant *domain.Re
 	}
 	defer tx.Rollback()
 
+	// Verify owner exists
+	var exists bool
+	err = tx.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM owners WHERE owner_id = $1)", 
+		restaurant.OwnerID).Scan(&exists)
+	if err != nil {
+		return fmt.Errorf("verify owner: %w", err)
+	}
+	if !exists {
+		return domain.ErrOwnerNotFound
+	}
+
 	// Insert restaurant
 	query := `
 		INSERT INTO restaurants (owner_id, name, description, main_image, is_verified)

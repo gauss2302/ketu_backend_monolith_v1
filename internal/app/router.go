@@ -34,13 +34,28 @@ func setupRoutes(app *fiber.App, h *handlers, m *middlewares) {
 
 	api := app.Group("/api/v1")
 
+	// Public routes (no auth required)
+	// Owner auth routes
+	ownerAuth := api.Group("/owner/auth")
+	ownerAuth.Post("/register", middleware.ValidateBody(&dto.OwnerRegisterRequestDTO{}), h.ownerAuth.Register)
+	ownerAuth.Post("/login", middleware.ValidateBody(&dto.OwnerLoginRequestDTO{}), h.ownerAuth.Login)
+
+	// User auth routes
 	auth := api.Group("/auth")
 	auth.Post("/register", middleware.ValidateBody(&dto.RegisterRequestDTO{}), h.auth.Register)
 	auth.Post("/login", middleware.ValidateBody(&dto.LoginRequestDTO{}), h.auth.Login)
-	auth.Post("/refresh", h.auth.RefreshToken)
 
+	// Protected routes group
 	protected := api.Group("")
 	protected.Use(m.auth.Authenticate())
+
+	// Protected auth routes (under protected group)
+	protected.Group("/auth").Post("/refresh", h.auth.RefreshToken)
+	protected.Group("/auth").Post("/logout", h.auth.Logout)
+	protected.Group("/owner/auth").Post("/refresh", h.ownerAuth.RefreshToken)
+	protected.Group("/owner/auth").Post("/logout", h.ownerAuth.Logout)
+
+	// Other protected routes
 	setupProtectedRoutes(protected, h)
 }
 
@@ -51,6 +66,7 @@ func setupProtectedRoutes(protected fiber.Router, h *handlers) {
 	users.Put("/:id", middleware.ValidateBody(&dto.UserUpdateDTO{}), h.user.Update)
 	users.Delete("/:id", h.user.Delete)
 
+	// Restaurant routes (require authentication)
 	restaurants := protected.Group("/restaurants")
 	restaurants.Post("/", middleware.ValidateBody(&dto.CreateRestaurantDTO{}), h.restaurant.Create)
 	restaurants.Get("/", h.restaurant.List)

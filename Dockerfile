@@ -24,9 +24,9 @@ WORKDIR /app
 # Install necessary runtime dependencies
 RUN apk add --no-cache ca-certificates tzdata curl
 
-# Copy the binary and required files
+# Copy the binary and migrations
 COPY --from=builder /app/main .
-COPY --from=builder /app/internal/pkg/database/migrations/*.sql ./internal/pkg/database/migrations/
+COPY --from=builder /app/internal/pkg/database/migrations ./internal/pkg/database/migrations
 
 # Expose port
 EXPOSE 8090

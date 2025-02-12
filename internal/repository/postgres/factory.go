@@ -8,11 +8,13 @@ import (
 type Repositories struct {
 	User       interfaces.UserRepository
 	Restaurant interfaces.RestaurantRepository
+	Owner      interfaces.OwnerRepository
 }
 
 func NewRepositories(db *database.DB) *Repositories {
 	return &Repositories{
 		User:       NewUserRepository(db),
 		Restaurant: NewRestaurantRepository(db),
+		Owner:      NewOwnerRepository(db),
 	}
-} 
+}

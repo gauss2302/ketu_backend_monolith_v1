@@ -30,13 +30,11 @@ func NewRedisClient(cfg *config.RedisConfig) (*Client, error) {
 	return &Client{client}, nil
 }
 
-func (c *Client) StoreRefreshToken(ctx context.Context, userID uint, refreshToken string, expiration time.Duration) error {
-	key := fmt.Sprintf("refresh_token:%d", userID)
+func (c *Client) StoreRefreshToken(ctx context.Context, key string, refreshToken string, expiration time.Duration) error {
 	return c.Set(ctx, key, refreshToken, expiration).Err()
 }
 
-func (c *Client) GetRefreshToken(ctx context.Context, userID uint) (string, error) {
-	key := fmt.Sprintf("refresh_token:%d", userID)
+func (c *Client) GetRefreshToken(ctx context.Context, key string) (string, error) {
 	token, err := c.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return "", fmt.Errorf("refresh token not found")
@@ -44,7 +42,10 @@ func (c *Client) GetRefreshToken(ctx context.Context, userID uint) (string, erro
 	return token, err
 }
 
-func (c *Client) DeleteRefreshToken(ctx context.Context, userID uint) error {
-	key := fmt.Sprintf("refresh_token:%d", userID)
+func (c *Client) DeleteRefreshToken(ctx context.Context, key string) error {
 	return c.Del(ctx, key).Err()
+}
+
+func (c *Client) Close() error {
+	return c.Client.Close()
 } 

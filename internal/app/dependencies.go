@@ -16,6 +16,7 @@ import (
 type handlers struct {
 	user       *http.UserHandler
 	auth       *http.AuthHandler
+	ownerAuth  *http.OwnerAuthHandler
 	restaurant *http.RestaurantHandler
 }
 
@@ -29,12 +30,14 @@ func setupDependencies(cfg *configs.Config, repos *postgres.Repositories, redisC
 	// Services
 	userService := service.NewUserService(repos.User)
 	authService := service.NewAuthService(repos.User, redisClient, &cfg.JWT)
+	ownerAuthService := service.NewOwnerAuthService(repos.Owner, redisClient, &cfg.JWT)
 	restaurantService := service.NewRestaurantService(repos.Restaurant)
 
 	// Handlers
 	handlers := &handlers{
 		user:       http.NewUserHandler(userService),
 		auth:       http.NewAuthHandler(authService),
+		ownerAuth:  http.NewOwnerAuthHandler(ownerAuthService),
 		restaurant: http.NewRestaurantHandler(restaurantService),
 	}
 

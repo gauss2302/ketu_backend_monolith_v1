@@ -1,5 +1,6 @@
 package dto
 
+// Users
 type LoginRequestDTO struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=6"`
@@ -18,6 +19,7 @@ type AuthResponseDTO struct {
 	ExpiresIn    int64            `json:"expiresIn"`
 }
 
+//Tokens
 type TokenRefreshResponse struct {
 	AccessToken string `json:"accessToken"`
 	ExpiresIn   int64  `json:"expiresIn"`

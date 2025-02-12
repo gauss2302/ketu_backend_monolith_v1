@@ -1,4 +1,3 @@
-// internal/service/auth.go
 package service
 
 import (
@@ -11,42 +10,42 @@ import (
 	redisClient "ketu_backend_monolith_v1/internal/pkg/redis"
 	"ketu_backend_monolith_v1/internal/pkg/utils/token"
 	repository "ketu_backend_monolith_v1/internal/repository/interfaces"
+	"log"
 	"time"
 
-	"github.com/lib/pq"
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthService struct {
-	userRepo     repository.UserRepository
+type OwnerAuthService struct {
+	ownerRepo    repository.OwnerRepository
 	tokenManager *token.TokenManager
 	cfg         *configs.JWTConfig
 }
 
-func NewAuthService(userRepo repository.UserRepository, redis *redisClient.Client, cfg *configs.JWTConfig) *AuthService {
-	return &AuthService{
-		userRepo:     userRepo,
+func NewOwnerAuthService(ownerRepo repository.OwnerRepository, redis *redisClient.Client, cfg *configs.JWTConfig) *OwnerAuthService {
+	return &OwnerAuthService{
+		ownerRepo:    ownerRepo,
 		tokenManager: token.NewTokenManager(redis, cfg),
 		cfg:         cfg,
 	}
 }
 
-func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO) (*dto.AuthResponseDTO, error) {
+func (s *OwnerAuthService) Register(ctx context.Context, req *dto.OwnerRegisterRequestDTO) (*dto.OwnerAuthResponseDTO, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, fmt.Errorf("password hashing error: %w", err)
 	}
 
-	user := &domain.User{
-		Username:  req.Username,
-		Email:     req.Email,
+	owner := &domain.Owner{
 		Name:      req.Name,
+		Email:     req.Email,
+		Phone:     req.Phone,
 		Password:  string(hashedPassword),
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
 	}
 
-	if err := s.userRepo.Create(ctx, user); err != nil {
+	if err := s.ownerRepo.Create(ctx, owner); err != nil {
 		if isPgUniqueViolation(err) {
 			return nil, domain.ErrEmailExists
 		}
@@ -54,10 +53,10 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO)
 	}
 
 	claims := token.BaseClaims{
-		ID:    user.ID,
-		Email: user.Email,
-		Role:  "user",
-		Type:  "user",
+		ID:    owner.ID,
+		Email: owner.Email,
+		Role:  "owner",
+		Type:  "owner",
 	}
 
 	// Generate tokens
@@ -77,56 +76,63 @@ func (s *AuthService) Register(ctx context.Context, req *dto.RegisterRequestDTO)
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
-	return &dto.AuthResponseDTO{
-		User:        mapper.ToUserResponseDTO(user),
+	return &dto.OwnerAuthResponseDTO{
+		Owner:       mapper.ToOwnerResponseDTO(owner),
 		AccessToken: accessToken,
 		ExpiresIn:   time.Now().Add(s.cfg.AccessTTL).Unix(),
 	}, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, req *dto.LoginRequestDTO) (*dto.AuthResponseDTO, error) {
-	user, err := s.userRepo.GetByEmail(ctx, req.Email)
+func (s *OwnerAuthService) Login(ctx context.Context, req *dto.OwnerLoginRequestDTO) (*dto.OwnerAuthResponseDTO, error) {
+	log.Printf("Attempting login for email: %s", req.Email)
+	
+	owner, err := s.ownerRepo.GetByEmail(ctx, req.Email)
 	if err != nil {
+		log.Printf("Error getting owner by email: %v", err)
 		return nil, err
 	}
 
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+	if err := bcrypt.CompareHashAndPassword([]byte(owner.Password), []byte(req.Password)); err != nil {
+		log.Printf("Password comparison failed for email: %s", req.Email)
 		return nil, domain.ErrInvalidCredentials
 	}
 
 	claims := token.BaseClaims{
-		ID:    user.ID,
-		Email: user.Email,
-		Role:  "user",
-		Type:  "user",
+		ID:    owner.ID,
+		Email: owner.Email,
+		Role:  "owner",
+		Type:  "owner",
 	}
 
 	accessToken, err := s.tokenManager.GenerateAccessToken(claims)
 	if err != nil {
+		log.Printf("Error generating access token: %v", err)
 		return nil, err
 	}
 
 	refreshToken, err := s.tokenManager.GenerateRefreshToken(claims)
 	if err != nil {
+		log.Printf("Error generating refresh token: %v", err)
 		return nil, err
 	}
 
 	err = s.tokenManager.StoreRefreshToken(ctx, claims, refreshToken)
 	if err != nil {
+		log.Printf("Error storing refresh token: %v", err)
 		return nil, fmt.Errorf("failed to store refresh token: %w", err)
 	}
 
-	return &dto.AuthResponseDTO{
-		User:        mapper.ToUserResponseDTO(user),
+	return &dto.OwnerAuthResponseDTO{
+		Owner:       mapper.ToOwnerResponseDTO(owner),
 		AccessToken: accessToken,
 		ExpiresIn:   time.Now().Add(s.cfg.AccessTTL).Unix(),
 	}, nil
 }
 
-func (s *AuthService) RefreshToken(ctx context.Context, userID uint) (*dto.TokenRefreshResponse, error) {
+func (s *OwnerAuthService) RefreshToken(ctx context.Context, ownerID uint) (*dto.TokenRefreshResponse, error) {
 	claims := token.BaseClaims{
-		ID:   userID,
-		Type: "user",
+		ID:   ownerID,
+		Type: "owner",
 	}
 	
 	storedToken, err := s.tokenManager.GetStoredRefreshToken(ctx, claims)
@@ -151,17 +157,19 @@ func (s *AuthService) RefreshToken(ctx context.Context, userID uint) (*dto.Token
 	}, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, userID uint) error {
+func (s *OwnerAuthService) Logout(ctx context.Context, ownerID uint) error {
 	claims := token.BaseClaims{
-		ID:   userID,
-		Type: "user",
+		ID:   ownerID,
+		Type: "owner",
 	}
 	return s.tokenManager.DeleteRefreshToken(ctx, claims)
 }
 
-func isPgUniqueViolation(err error) bool {
-	if pgErr, ok := err.(*pq.Error); ok {
-		return pgErr.Code == "23505"
-	}
-	return false
-}
+// func isPgUniqueViolation(err error) bool {
+// 	if pgErr, ok := err.(*pq.Error); ok {
+// 		return pgErr.Code == "23505"
+// 	}
+// 	return false
+// }
+
+

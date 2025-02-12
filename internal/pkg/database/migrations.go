@@ -39,7 +39,7 @@ func RunMigrations(dsn string) error {
 	}
 	defer m.Close()
 
-	// Skip forcing version to 0 as it's causing issues
+	// Force to the latest version
 	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
