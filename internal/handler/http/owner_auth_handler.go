@@ -14,6 +14,7 @@ import (
 
 type OwnerAuthHandler struct {
 	ownerAuthService *service.OwnerAuthService
+
 	validator        *validator.Validate
 }
 
@@ -121,3 +122,15 @@ func (h *OwnerAuthHandler) Logout(c *fiber.Ctx) error {
 
 	return c.SendStatus(fiber.StatusNoContent)
 } 
+
+// func (h *OwnerAuthHandler) OwnerMe(c *fiber.Ctx) error {
+// 	ownerID, ok := c.Locals("owner_id").(uint)
+
+// 	if !ok {
+// 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+// 			"error": "Owner Unauthorized",
+// 		})
+// 	}
+
+// 	owner, err := h.owner
+// }

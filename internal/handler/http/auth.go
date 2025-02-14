@@ -15,12 +15,14 @@ import (
 
 type AuthHandler struct {
 	authService *service.AuthService
+	userService *service.UserService
 	validator   *validator.Validate
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService *service.AuthService, userService *service.UserService) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		userService: userService,
 		validator:   validator.New(),
 	}
 }
@@ -111,4 +113,38 @@ func (h *AuthHandler) Logout(c *fiber.Ctx) error {
     }
 
     return c.SendStatus(fiber.StatusNoContent)
+}
+
+func (h *AuthHandler) Me(c *fiber.Ctx) error {
+	userID, ok := c.Locals("user_id").(uint)
+	if !ok {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Unauthorized",
+		})
+	}
+
+	user, err := h.userService.GetByID(c.Context(), userID)
+	if err != nil {
+		if errors.Is(err, domain.ErrUserNotFound) {
+			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+				"error": "User not found",
+			})
+		}
+		log.Printf("Error getting user by ID: %v", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to retrieve user information",
+		})
+	}
+
+	// Convert the domain.User to a DTO for the response
+	responseDTO := &dto.UserResponseDTO{
+		ID:        user.ID,
+		Username:  user.Username,
+		Email:     user.Email,
+		Name:      user.Name,
+		CreatedAt: user.CreatedAt,
+		UpdatedAt: user.UpdatedAt,
+	}
+
+	return c.JSON(responseDTO)
 }

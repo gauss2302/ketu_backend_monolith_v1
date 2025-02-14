@@ -165,11 +165,3 @@ func (s *OwnerAuthService) Logout(ctx context.Context, ownerID uint) error {
 	return s.tokenManager.DeleteRefreshToken(ctx, claims)
 }
 
-// func isPgUniqueViolation(err error) bool {
-// 	if pgErr, ok := err.(*pq.Error); ok {
-// 		return pgErr.Code == "23505"
-// 	}
-// 	return false
-// }
-
-

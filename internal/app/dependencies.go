@@ -36,7 +36,7 @@ func setupDependencies(cfg *configs.Config, repos *postgres.Repositories, redisC
 	// Handlers
 	handlers := &handlers{
 		user:       http.NewUserHandler(userService),
-		auth:       http.NewAuthHandler(authService),
+		auth:       http.NewAuthHandler(authService, userService),
 		ownerAuth:  http.NewOwnerAuthHandler(ownerAuthService),
 		restaurant: http.NewRestaurantHandler(restaurantService),
 	}

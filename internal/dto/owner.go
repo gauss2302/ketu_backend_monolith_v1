@@ -20,6 +20,8 @@ type OwnerResponseDTO struct {
 	Email     string    `json:"email"`
 	Phone     string    `json:"phone"`
 	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+
 }
 
 type OwnerAuthResponseDTO struct {
@@ -36,9 +38,9 @@ type OwnerCreateDTO struct {
 }
 
 type OwnerUpdateDTO struct {
-	Name  string `json:"name,omitempty" validate:"omitempty"`
-	Email string `json:"email,omitempty" validate:"omitempty,email"`
-	Phone string `json:"phone,omitempty" validate:"omitempty"`
+	Name  *string `json:"name,omitempty" validate:"omitempty"`
+	Email *string `json:"email,omitempty" validate:"omitempty,email"`
+	Phone *string `json:"phone,omitempty" validate:"omitempty"`
 }
 
 type RestaurantBasicDTO struct {
