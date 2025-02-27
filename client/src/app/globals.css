@@ -14,8 +14,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 47.4% 11.2%;
 
-    --border: 214.3 31.8% 91.4%; /*  <-- This is important for Shadcn */
-    --input: 214.3 31.8% 91.4%; /*  <--  And this */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
 
     --card: 0 0% 100%;
     --card-foreground: 222.2 47.4% 11.2%;
@@ -37,8 +37,8 @@
     --radius: 0.5rem;
 
     /* --- Custom Colors --- */
-    --primary-app: 2, 115, 82; /* #FF7352 in HSL - Corrected: Just the values */
-    --primary-app-light: 2, 134, 104; /* #FF8668 - Corrected: Just the values*/
+    --primary-app: 2, 115, 82;
+    --primary-app-light: 2, 134, 104;
   }
 
   .dark {
@@ -57,8 +57,8 @@
     --card: 224 71% 4%;
     --card-foreground: 213 31% 91%;
 
-    --border: 216 34% 17%; /*  <-- Important for Shadcn */
-    --input: 216 34% 17%; /*  <-- Important for Shadcn */
+    --border: 216 34% 17%;
+    --input: 216 34% 17%;
 
     --primary: 210 40% 98%;
     --primary-foreground: 222.2 47.4% 1.2%;
@@ -72,14 +72,31 @@
     --ring: 216 34% 17%;
 
     /* --- Custom Colors --- */
-    --primary-app: 2, 115, 82; /* #FF7352 in HSL - Corrected: Just the values*/
-    --primary-app-light: 2, 134, 104; /* #FF8668 - Corrected: Just the values*/
+    --primary-app: 2, 115, 82;
+    --primary-app-light: 2, 134, 104;
+  }
+
+  html,
+  body {
+    /* Added these lines */
+    height: 100%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border; /* This now works correctly */
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
   body {
     @apply bg-background text-foreground;

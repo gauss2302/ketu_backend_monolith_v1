@@ -4,9 +4,29 @@
 import { Button } from "@/components/ui/button";
 import withAuth from "@/app/_components/withAuth";
 import { useAuth } from "@/app/_components/AuthContext";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 function OwnerDashboardPage() {
-  const { owner, ownerLogout } = useAuth();
+  const { owner, ownerLogout, loading, ownerAccessToken } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && !ownerAccessToken) {
+      router.push("/owner-login");
+    }
+    if (!loading && !owner) {
+      router.push("/owner-login");
+    }
+  }, [loading, owner, ownerAccessToken, router]);
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!owner) {
+    return <div>Owner not found</div>;
+  }
 
   return (
     <div className="p-6">

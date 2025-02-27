@@ -1,9 +1,11 @@
-import React, { ReactNode } from "react";
+// app/(auth)/layout.tsx
+"use client";
+import React from "react";
 
-type AuthLayoutProps = {
-  children: ReactNode;
-};
-
-export default function AuthLayout({ children }: AuthLayoutProps) {
-  return <>{children}</>;
+export default function AuthLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <div className="overflow-hidden h-screen">{children}</div>;
 }

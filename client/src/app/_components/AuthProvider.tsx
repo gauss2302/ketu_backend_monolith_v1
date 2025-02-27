@@ -56,11 +56,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     if (storedOwnerAccessToken) {
       setOwnerAccessToken(storedOwnerAccessToken);
-      // Decode owner token and set owner state similarly
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const decodedToken: any = jwtDecode(storedOwnerAccessToken);
+        setOwner({
+          owner_id: decodedToken.id,
+          email: decodedToken.email,
+          name: decodedToken.name,
+          phone: decodedToken.phone,
+          created_at: decodedToken.created_at,
+        });
+      } catch (error) {
+        console.error("Error decoding owner access token:", error);
+      }
     }
 
     setLoading(false);
   }, []);
+
   const login = useCallback(
     async (data: ILoginRequestDTO): Promise<IAuthResponse> => {
       // Corrected
