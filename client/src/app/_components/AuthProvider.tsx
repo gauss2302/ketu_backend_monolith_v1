@@ -1,4 +1,3 @@
-// app/_components/AuthProvider.tsx
 "use client";
 import React, { useState, ReactNode, useCallback, useEffect } from "react";
 import { AuthContext } from "./AuthContext";
@@ -19,6 +18,7 @@ import {
   IOwnerRegisterRequestDTO,
 } from "../_interfaces/auth";
 import { useRouter } from "next/navigation";
+import { jwtDecode } from "jwt-decode";
 
 type AuthProviderProps = {
   children: ReactNode;
@@ -29,25 +29,41 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [owner, setOwner] = useState<IOwner | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [ownerAccessToken, setOwnerAccessToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const router = useRouter();
 
-  // Load token from local storage on initial load
   useEffect(() => {
     const storedAccessToken = localStorage.getItem("accessToken");
     const storedOwnerAccessToken = localStorage.getItem("ownerAccessToken");
 
     if (storedAccessToken) {
       setAccessToken(storedAccessToken);
-      // You might also fetch user details here if needed.
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const decodedToken: any = jwtDecode(storedAccessToken);
+        setUser({
+          id: decodedToken.id,
+          email: decodedToken.email,
+          username: "", // You may need to fetch the username from the backend
+          name: "", // You may need to fetch the name from the backend
+          // createdAt: "", // You may need to fetch the createdAt from the backend
+          // updatedAt: "", // You may need to fetch the updatedAt from the backend
+        });
+      } catch (error) {
+        console.error("Error decoding access token:", error);
+      }
     }
+
     if (storedOwnerAccessToken) {
       setOwnerAccessToken(storedOwnerAccessToken);
+      // Decode owner token and set owner state similarly
     }
-  }, []);
 
+    setLoading(false);
+  }, []);
   const login = useCallback(
-    async (data: ILoginRequestDTO) => {
+    async (data: ILoginRequestDTO): Promise<IAuthResponse> => {
+      // Corrected
       setLoading(true);
       try {
         const response: IAuthResponse = await userLogin(data);
@@ -55,6 +71,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAccessToken(response.accessToken);
         localStorage.setItem("accessToken", response.accessToken);
         router.push("/dashboard/user"); // Redirect to user dashboard
+        return response; // Return the response
       } catch (error) {
         console.error("Login failed:", error);
         throw error;
@@ -66,7 +83,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 
   const register = useCallback(
-    async (data: IRegisterRequestDTO) => {
+    async (data: IRegisterRequestDTO): Promise<IAuthResponse> => {
+      // Corrected
       setLoading(true);
       try {
         const response: IAuthResponse = await userRegister(data);
@@ -74,6 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setAccessToken(response.accessToken);
         localStorage.setItem("accessToken", response.accessToken);
         router.push("/dashboard/user"); // Redirect to user dashboard
+        return response; // Return the response
       } catch (error) {
         console.error("Registration failed:", error);
         throw error;
@@ -85,7 +104,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 
   const ownerLogin = useCallback(
-    async (data: IOwnerLoginRequestDTO) => {
+    async (data: IOwnerLoginRequestDTO): Promise<IOwnerAuthResponse> => {
+      // Corrected
       setLoading(true);
       try {
         const response: IOwnerAuthResponse = await ownerLoginApi(data);
@@ -93,6 +113,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setOwnerAccessToken(response.access_token);
         localStorage.setItem("ownerAccessToken", response.access_token);
         router.push("/dashboard/owner"); // Redirect to owner dashboard
+        return response; // Return the response
       } catch (error) {
         console.error("Owner login failed:", error);
         throw error;
@@ -104,7 +125,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   );
 
   const ownerRegister = useCallback(
-    async (data: IOwnerRegisterRequestDTO) => {
+    async (data: IOwnerRegisterRequestDTO): Promise<IOwnerAuthResponse> => {
+      // Corrected
       setLoading(true);
       try {
         const response: IOwnerAuthResponse = await ownerRegisterApi(data);
@@ -112,6 +134,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         setOwnerAccessToken(response.access_token);
         localStorage.setItem("ownerAccessToken", response.access_token);
         router.push("/dashboard/owner"); // Redirect to owner dashboard
+        return response; // Return the response
       } catch (error) {
         console.error("Owner registration failed:", error);
         throw error;
@@ -136,6 +159,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     router.push("/owner-login");
   }, [router]);
 
+  const isAuthenticated = () => {
+    return !!(accessToken || ownerAccessToken);
+  };
+
   const contextValue = {
     user,
     owner,
@@ -148,6 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     logout,
     ownerLogout,
     loading,
+    isAuthenticated,
   };
 
   return (

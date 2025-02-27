@@ -1,10 +1,13 @@
 "use client";
-import React, { createContext, useContext } from "react";
-import { IUser, IOwner } from "../_interfaces/auth"; // Import user and owner interfaces
+import { createContext, useContext } from "react";
 import {
+  IUser,
+  IOwner,
   ILoginRequestDTO,
   IRegisterRequestDTO,
+  IAuthResponse,
   IOwnerLoginRequestDTO,
+  IOwnerAuthResponse,
   IOwnerRegisterRequestDTO,
 } from "../_interfaces/auth";
 
@@ -14,12 +17,15 @@ interface AuthContextType {
   accessToken: string | null;
   ownerAccessToken: string | null;
   loading: boolean;
-  login: (data: any) => Promise<void>;
-  register: (data: any) => Promise<void>;
-  ownerLogin: (data: any) => Promise<void>;
-  ownerRegister: (data: any) => Promise<void>;
+  login: (data: ILoginRequestDTO) => Promise<IAuthResponse>; // Corrected return type
+  register: (data: IRegisterRequestDTO) => Promise<IAuthResponse>; // Corrected return type
+  ownerLogin: (data: IOwnerLoginRequestDTO) => Promise<IOwnerAuthResponse>;
+  ownerRegister: (
+    data: IOwnerRegisterRequestDTO
+  ) => Promise<IOwnerAuthResponse>;
   logout: () => void;
   ownerLogout: () => void;
+  isAuthenticated: () => boolean;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);

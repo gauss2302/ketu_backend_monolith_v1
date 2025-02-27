@@ -3,7 +3,6 @@
 import {
   Settings,
   MapPin,
-  Star,
   Heart,
   Gift,
   HelpCircle,

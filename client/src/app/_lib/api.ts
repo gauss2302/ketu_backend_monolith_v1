@@ -20,30 +20,50 @@ const api: AxiosInstance = axios.create({
 export const userLogin = async (
   data: ILoginRequestDTO
 ): Promise<IAuthResponse> => {
-  const response = await api.post("/auth/login", data);
-  return response.data;
+  try {
+    const response = await api.post("/auth/login", data);
+    return response.data;
+  } catch (error: unknown) {
+    console.error("User login error:", error);
+    throw error; // Re-throw the error so the calling component can handle it
+  }
 };
 
 export const userRegister = async (
   data: IRegisterRequestDTO
 ): Promise<IAuthResponse> => {
-  const response = await api.post("/auth/register", data);
-  return response.data;
+  try {
+    const response = await api.post("/auth/register", data);
+    return response.data;
+  } catch (error: unknown) {
+    console.error("User login error:", error);
+    throw error;
+  }
 };
 
 // Owner Authentication
 export const ownerLogin = async (
   data: IOwnerLoginRequestDTO
 ): Promise<IOwnerAuthResponse> => {
-  const response = await api.post("/owner/auth/login", data);
-  return response.data;
+  try {
+    const response = await api.post("/owner/auth/login", data);
+    return response.data;
+  } catch (error: unknown) {
+    console.error("Owner login error:", error);
+    throw error;
+  }
 };
 
 export const ownerRegister = async (
   data: IOwnerRegisterRequestDTO
 ): Promise<IOwnerAuthResponse> => {
-  const response = await api.post("/owner/auth/register", data);
-  return response.data;
+  try {
+    const response = await api.post("/owner/auth/register", data);
+    return response.data;
+  } catch (error: unknown) {
+    console.error("Owner register error:", error);
+    throw error;
+  }
 };
 
 export default api;
