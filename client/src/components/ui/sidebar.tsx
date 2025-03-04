@@ -87,14 +87,10 @@ export const DesktopSidebar = ({
 }: React.ComponentProps<typeof motion.div>) => {
   const { open, setOpen, animate } = useSidebar();
 
-  const waveColors = ["#38bdf8", "#818cf8", "#c084fc", "#e879f9", "#22d3ee"];
-
-  const gradient = `linear-gradient(to bottom, ${waveColors.join(", ")})`;
-
   return (
     <motion.div
       className={cn(
-        "h-full px-4 py-4 hidden md:flex md:flex-col text-white w-[300px] flex-shrink-0", // Added text-white
+        "h-full px-4 py-4 hidden md:flex md:flex-col bg-neutral-50 dark:bg-neutral-900 w-[300px] flex-shrink-0 border-r dark:border-neutral-800", // Updated classes
         className
       )}
       animate={{
@@ -103,7 +99,6 @@ export const DesktopSidebar = ({
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       {...props}
-      style={{ background: gradient }} // Added gradient style
     >
       {children}
     </motion.div>

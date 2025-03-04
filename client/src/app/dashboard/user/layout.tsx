@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink } from "@/components/ui/sidebar";
 import { LayoutDashboard, UserCog, Settings, LogOut } from "lucide-react";
 import Image from "next/image";
-// import { Header } from "./components/header";
+import { Header } from "./components/header";
 // import { Footer } from "./components/footer";
 import { useAuth } from "@/app/_components/AuthContext";
 
@@ -13,7 +13,7 @@ type LayoutProps = {
 
 export default function UserDashboardLayout({ children }: LayoutProps) {
   const [open, setOpen] = useState(false);
-  const { logout } = useAuth(); // Get logout function
+  const { logout } = useAuth();
 
   const links = [
     {
@@ -42,7 +42,7 @@ export default function UserDashboardLayout({ children }: LayoutProps) {
   return (
     <div className="flex flex-col h-screen">
       {/* <Header /> */}
-      <div className="flex flex-1 h-full">
+      <div className="flex flex-1">
         <Sidebar open={open} setOpen={setOpen}>
           <SidebarBody className="justify-between gap-10 h-full">
             <div className="flex flex-col flex-1 overflow-y-auto overflow-x-hidden h-full">
@@ -50,7 +50,7 @@ export default function UserDashboardLayout({ children }: LayoutProps) {
                 {links.map((link, idx) => (
                   <SidebarLink key={idx} link={link} />
                 ))}
-                <button // Separate Logout link
+                <button
                   onClick={logout}
                   className="flex items-center justify-start gap-2 group/sidebar py-2"
                 >
@@ -80,7 +80,10 @@ export default function UserDashboardLayout({ children }: LayoutProps) {
             </div>
           </SidebarBody>
         </Sidebar>
-        <main className="flex-1 p-4 h-full">{children}</main>
+        <main className="flex-1 p-4">
+          <Header />
+          {children}
+        </main>
       </div>
       {/* <Footer /> */}
     </div>

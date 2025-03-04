@@ -1,17 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useTheme } from "next-themes";
 import {
   Card,
   CardContent,
@@ -19,16 +13,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export default function SettingsPage() {
-  const [theme, setTheme] = useState("light");
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [password, setPassword] = useState("");
-  const [email, setEmail] = useState("");
-
-  const handleThemeChange = (value: string) => {
-    setTheme(value);
-  };
+  const { theme, setTheme } = useTheme();
+  const [emailNotifications, setEmailNotifications] = React.useState(true);
+  const [password, setPassword] = React.useState("");
+  const [email, setEmail] = React.useState("");
 
   const handleEmailNotificationsChange = (checked: boolean) => {
     setEmailNotifications(checked);
@@ -63,7 +60,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Theme</Label>
-            <Select value={theme} onValueChange={handleThemeChange}>
+            <Select value={theme} onValueChange={setTheme}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Select theme" />
               </SelectTrigger>
