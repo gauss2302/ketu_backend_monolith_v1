@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"ketu_backend_monolith_v1/internal/config"
@@ -25,18 +26,45 @@ type App struct {
 
 func New() (*App, error) {
 	cfg, err := config.LoadConfig()
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to load config: %v", err)
+		return nil, fmt.Errorf("error loading config: %v", err)
 	}
 
-	db, err := database.NewPostgresDB(cfg.DB.URL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init database: %v", err)
+	type result struct {
+		db    *database.DB
+		redis *redis.Client
+		err   error
+		which string
 	}
 
-	redisClient, err := redis.NewRedisClient(&cfg.Redis)
-	if err != nil {
-		return nil, fmt.Errorf("failed to init Redis: %v", err)
+	initChan := make(chan result, 2)
+
+	go func() {
+		db, err := database.NewPostgresDB(cfg.DB.URL)
+		initChan <- result{db: db, err: err, which: "database"}
+	}()
+
+	go func() {
+		redisClient, err := redis.NewRedisClient(&cfg.Redis)
+		initChan <- result{redis: redisClient, err: err, which: "redis"}
+	}()
+
+	var db *database.DB
+	var redisClient *redis.Client
+
+	for i := 0; i < 2; i++ {
+		res := <-initChan
+
+		if res.err != nil {
+			return nil, fmt.Errorf("failed to init %s: %v", res.which, res.err)
+		}
+
+		if res.which == "database" {
+			db = res.db
+		} else {
+			redisClient = res.redis
+		}
 	}
 
 	repos := postgres.NewRepositories(db)
@@ -69,15 +97,50 @@ func (a *App) Run() error {
 }
 
 func (a *App) Shutdown() error {
-	if err := a.server.Shutdown(); err != nil {
-		return fmt.Errorf("error shutting down HTTP server: %v", err)
+	var wg sync.WaitGroup
+
+	errChan := make(chan error, 3)
+
+	wg.Add(3)
+
+	go func() {
+		defer wg.Done()
+		if err := a.server.Shutdown(); err != nil {
+			errChan <- fmt.Errorf("Error shutting down Http server: %v", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := a.db.Close(); err != nil {
+			errChan <- fmt.Errorf("Error closing db connection: %v", err)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		if err := a.redis.Close(); err != nil {
+			errChan <- fmt.Errorf("Error closing redis connection: %v", err)
+		}
+	}()
+
+	wg.Wait()
+	close(errChan)
+
+	var errors []error
+
+	for err := range errChan {
+		errors = append(errors, err)
 	}
-	if err := a.db.Close(); err != nil {
-		return fmt.Errorf("error closing database connection: %v", err)
+
+	if len(errors) > 0 {
+		var errMsg string
+		for _, err := range errors {
+			errMsg += err.Error() + "; "
+		}
+		return fmt.Errorf("Shutdown errors: %s", errMsg)
 	}
-	if err := a.redis.Close(); err != nil {
-		return fmt.Errorf("error closing redis connection: %v", err)
-	}
+
 	return nil
 }
 
