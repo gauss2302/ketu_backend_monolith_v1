@@ -103,7 +103,7 @@ func (h *RestaurantHandler) List(c *fiber.Ctx) error {
 
 // ListByOwner handles retrieving restaurants for the authenticated owner
 func (h *RestaurantHandler) ListByOwner(c *fiber.Ctx) error {
-	ownerID := c.Locals("user_id").(uint)
+	ownerID := c.Locals("owner_id").(uint)
 	params := dto.ListParams{
 		Offset: getIntQuery(c, "offset", 0),
 		Limit:  getIntQuery(c, "limit", 10),
@@ -177,7 +177,7 @@ func (h *RestaurantHandler) Delete(c *fiber.Ctx) error {
 	}
 
 	// Verify ownership
-	ownerID := c.Locals("user_id").(uint)
+	ownerID := c.Locals("owner_id").(uint)
 
 	err = h.restaurantService.Delete(c.Context(), uint(id), ownerID)
 	if err != nil {

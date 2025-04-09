@@ -1,3 +1,5 @@
+// In app/(auth)/login/page.tsx
+
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/app/_components/AuthContext";
@@ -34,7 +36,7 @@ export default function LoginPage() {
           linkText="Register"
           linkHref="/register"
           linkMessage="Don't have an account?"
-          onSubmit={handleSubmit}
+          onSubmitAction={handleSubmit} // Changed from onSubmit to onSubmitAction
           initialFormData={{ email: "", password: "" }}
           error={error}
           loading={loading}

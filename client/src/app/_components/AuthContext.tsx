@@ -1,3 +1,7 @@
+// In app/_components/AuthContext.tsx
+
+// In app/_components/AuthContext.tsx
+
 "use client";
 import { createContext, useContext } from "react";
 import {
@@ -11,14 +15,16 @@ import {
   IOwnerRegisterRequestDTO,
 } from "../_interfaces/auth";
 
+// In AuthContext.tsx
+
 interface AuthContextType {
   user: IUser | null;
   owner: IOwner | null;
   accessToken: string | null;
   ownerAccessToken: string | null;
   loading: boolean;
-  login: (data: ILoginRequestDTO) => Promise<IAuthResponse>; // Corrected return type
-  register: (data: IRegisterRequestDTO) => Promise<IAuthResponse>; // Corrected return type
+  login: (data: ILoginRequestDTO) => Promise<IAuthResponse>;
+  register: (data: IRegisterRequestDTO) => Promise<IAuthResponse>;
   ownerLogin: (data: IOwnerLoginRequestDTO) => Promise<IOwnerAuthResponse>;
   ownerRegister: (
     data: IOwnerRegisterRequestDTO
@@ -26,6 +32,8 @@ interface AuthContextType {
   logout: () => void;
   ownerLogout: () => void;
   isAuthenticated: () => boolean;
+  refreshToken: () => Promise<void>;
+  refreshOwnerToken: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);

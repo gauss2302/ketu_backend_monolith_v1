@@ -17,11 +17,13 @@ func setupRouter(h *handlers, m *middlewares) *fiber.App {
 	})
 
 	// Configure CORS
-	app.Use(cors.New(cors.Config{
-		AllowOrigins: "*",
-		AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
-		AllowHeaders: "Origin, Content-Type, Accept, Authorization",
-	}))
+// Configure CORS with specific origin instead of wildcard
+app.Use(cors.New(cors.Config{
+	AllowOrigins: "http://localhost:3000",
+	AllowMethods: "GET,POST,PUT,DELETE,OPTIONS",
+	AllowHeaders: "Origin, Content-Type, Accept, Authorization",
+	AllowCredentials: true,
+}))
 
 	app.Use(middleware.RequestLogger())
 

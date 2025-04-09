@@ -14,6 +14,7 @@ const api: AxiosInstance = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: false,
 });
 
 // User Authentication
@@ -25,7 +26,7 @@ export const userLogin = async (
     return response.data;
   } catch (error: unknown) {
     console.error("User login error:", error);
-    throw error; // Re-throw the error so the calling component can handle it
+    throw error;
   }
 };
 
@@ -36,8 +37,12 @@ export const userRegister = async (
     const response = await api.post("/auth/register", data);
     return response.data;
   } catch (error: unknown) {
-    console.error("User login error:", error);
-    throw error;
+    console.error("User registration error:", error);
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("Server response:", error.response.data);
+      throw error;
+    }
+    throw new Error("Registration failed: Network error");
   }
 };
 

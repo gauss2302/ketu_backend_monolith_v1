@@ -1,20 +1,33 @@
+// In app/(auth)/register/page.tsx
+
 "use client";
 import { useState } from "react";
 import { useAuth } from "@/app/_components/AuthContext";
 import { IRegisterRequestDTO } from "@/app/_interfaces/auth";
 import { WavyBackground } from "@/components/ui/wavy-background";
 import { AuthForm } from "@/app/_components/auth-form";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const { register, loading } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   const handleSubmit = async (formData: IRegisterRequestDTO) => {
     setError(null);
     try {
-      await register(formData);
+      console.log("Submitting registration form:", {
+        ...formData,
+        password: "[REDACTED]",
+      });
+      const result = await register(formData);
+      console.log("Registration successful:", result);
+
+      // Add manual navigation as a backup
+      router.push("/dashboard/user");
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+      console.error("Registration error:", err);
       setError(err.response?.data?.error || "An unknown error occurred");
     }
   };
@@ -34,7 +47,7 @@ export default function RegisterPage() {
           linkText="Login"
           linkHref="/login"
           linkMessage="Already have an account?"
-          onSubmit={handleSubmit}
+          onSubmitAction={handleSubmit}
           initialFormData={{ username: "", name: "", email: "", password: "" }}
           error={error}
           loading={loading}
